@@ -1,4 +1,3 @@
-// example/main.go
 package main
 
 import (

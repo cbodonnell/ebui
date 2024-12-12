@@ -1,4 +1,3 @@
-// layout.go
 package ebui
 
 // Alignment represents horizontal or vertical alignment options

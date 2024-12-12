@@ -1,4 +1,3 @@
-// layout_container.go
 package ebui
 
 import (
