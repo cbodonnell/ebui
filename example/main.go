@@ -9,12 +9,14 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var _ ebiten.Game = &Game{}
+
 type Game struct {
 	ui *ebui.Manager
 }
 
 func NewGame() *Game {
-	// ebui.Debug = true
+	ebui.Debug = true
 
 	root := ebui.NewVStackContainer(10, ebui.AlignCenter)
 

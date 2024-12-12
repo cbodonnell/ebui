@@ -1,7 +1,12 @@
 package ebui
 
 import (
+	"fmt"
+	"image/color"
+
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text"
+	"golang.org/x/image/font/basicfont"
 )
 
 // Position represents the position of a component
@@ -42,27 +47,19 @@ var _ Component = &BaseComponent{}
 
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
-	id       uint64
-	position Position
-	size     Size
-	padding  Padding
-	parent   Container
+	id         uint64
+	position   Position
+	size       Size
+	padding    Padding
+	background color.Color
+	parent     Container
 }
 
 func NewBaseComponent() *BaseComponent {
 	return &BaseComponent{
-		id: generateID(),
+		id:         GenerateID(),
+		background: color.RGBA{0, 0, 0, 0}, // Transparent by default
 	}
-}
-
-var nextID uint64
-
-func generateID() uint64 {
-	nextID++
-	if nextID == 0 {
-		panic("ID overflow")
-	}
-	return nextID
 }
 
 func (b *BaseComponent) GetID() uint64 {
@@ -74,7 +71,8 @@ func (b *BaseComponent) Update() error {
 }
 
 func (b *BaseComponent) Draw(screen *ebiten.Image) {
-	debugDraw(screen, b)
+	b.drawBackground(screen)
+	b.drawDebug(screen)
 }
 
 func (b *BaseComponent) SetPosition(pos Position) {
@@ -109,6 +107,23 @@ func (b *BaseComponent) GetPadding() Padding {
 	return b.padding
 }
 
+func (b *BaseComponent) SetBackground(color color.Color) {
+	b.background = color
+}
+
+func (b *BaseComponent) drawBackground(screen *ebiten.Image) {
+	if b.background == nil {
+		return
+	}
+	pos := b.GetAbsolutePosition()
+	size := b.GetSize()
+	bg := ebiten.NewImage(int(size.Width), int(size.Height))
+	bg.Fill(b.background)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(pos.X, pos.Y)
+	screen.DrawImage(bg, op)
+}
+
 func (b *BaseComponent) Contains(x, y float64) bool {
 	pos := b.GetAbsolutePosition()
 	size := b.GetSize()
@@ -124,4 +139,56 @@ func (b *BaseComponent) GetAbsolutePosition() Position {
 		pos.Y += parentPos.Y
 	}
 	return pos
+}
+
+func (b *BaseComponent) drawDebug(screen *ebiten.Image) {
+	if !Debug {
+		return
+	}
+
+	// Get a color for this component
+	debugColor, ok := colorMap[b.GetID()]
+	if !ok {
+		debugColor = debugColors[debugDepth%len(debugColors)]
+		colorMap[b.GetID()] = debugColor
+	}
+
+	pos := b.GetAbsolutePosition()
+	size := b.GetSize()
+	padding := b.GetPadding()
+
+	// Draw component bounds
+	debugRect := ebiten.NewImage(int(size.Width), int(size.Height))
+	debugRect.Fill(debugColor)
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(pos.X, pos.Y)
+	screen.DrawImage(debugRect, op)
+
+	// Draw padding bounds with even more transparent color
+	if padding.Top > 0 || padding.Right > 0 || padding.Bottom > 0 || padding.Left > 0 {
+		paddingRect := ebiten.NewImage(
+			int(size.Width-padding.Left-padding.Right),
+			int(size.Height-padding.Top-padding.Bottom),
+		)
+		paddingRect.Fill(color.RGBA{255, 255, 255, 15}) // Very transparent white
+
+		op = &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(pos.X+padding.Left, pos.Y+padding.Top)
+		screen.DrawImage(paddingRect, op)
+	}
+
+	// Draw component info with a slight shadow for better visibility
+	info := fmt.Sprintf("Pos: (%.0f, %.0f)\nSize: %.0f x %.0f\nPadding: %.0f, %.0f, %.0f, %.0f",
+		pos.X, pos.Y, size.Width, size.Height,
+		padding.Top, padding.Right, padding.Bottom, padding.Left)
+
+	// Draw text shadow
+	text.Draw(screen, info, basicfont.Face7x13,
+		int(pos.X)+5, int(pos.Y)+14, color.RGBA{0, 0, 0, 40})
+	// Draw text
+	text.Draw(screen, info, basicfont.Face7x13,
+		int(pos.X)+4, int(pos.Y)+13, color.RGBA{0, 0, 0, 180})
+
+	debugDepth++
 }

@@ -57,7 +57,6 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 
 	// First pass: calculate total size and count flexible children
 	var totalFixedMainAxis float64
-	var flexibleChildren int
 	childSizes := make([]Size, len(children))
 
 	for i, child := range children {
@@ -65,17 +64,9 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 		childSizes[i] = size
 
 		if l.Vertical {
-			if size.AutoHeight {
-				flexibleChildren++
-			} else {
-				totalFixedMainAxis += size.Height
-			}
+			totalFixedMainAxis += size.Height
 		} else {
-			if size.AutoWidth {
-				flexibleChildren++
-			} else {
-				totalFixedMainAxis += size.Width
-			}
+			totalFixedMainAxis += size.Width
 		}
 	}
 

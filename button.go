@@ -64,6 +64,13 @@ func (b *Button) OnClick(handler func()) {
 }
 
 func (b *Button) Draw(screen *ebiten.Image) {
+	b.BaseComponent.drawBackground(screen)
+	b.draw(screen)
+	b.BaseComponent.drawDebug(screen)
+}
+
+// draw renders the button to the screen
+func (b Button) draw(screen *ebiten.Image) {
 	pos := b.GetAbsolutePosition()
 	size := b.GetSize()
 
@@ -89,6 +96,4 @@ func (b *Button) Draw(screen *ebiten.Image) {
 	textX := pos.X + (size.Width-float64(textWidth))/2
 	textY := pos.Y + (size.Height-float64(textHeight))/2 + float64(textHeight)
 	text.Draw(screen, b.label, b.font, int(textX), int(textY), b.textColor)
-
-	b.BaseComponent.Draw(screen)
 }
