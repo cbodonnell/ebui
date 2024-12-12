@@ -11,8 +11,8 @@ import (
 
 // Position represents the position of a component
 type Position struct {
-	X, Y             float64
-	RelativeToParent bool
+	X, Y     float64
+	Absolute bool
 }
 
 // Size represents the dimensions of a component
@@ -133,7 +133,7 @@ func (b *BaseComponent) Contains(x, y float64) bool {
 
 func (b *BaseComponent) GetAbsolutePosition() Position {
 	pos := b.position
-	if b.parent != nil && b.position.RelativeToParent {
+	if b.parent != nil && !b.position.Absolute {
 		parentPos := b.parent.GetAbsolutePosition()
 		pos.X += parentPos.X
 		pos.Y += parentPos.Y

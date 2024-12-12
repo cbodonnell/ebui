@@ -108,7 +108,7 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 
 	for i, child := range children {
 		size := childSizes[i]
-		pos := Position{RelativeToParent: true}
+		pos := Position{Absolute: false}
 
 		if l.Vertical {
 			// For vertical stack
