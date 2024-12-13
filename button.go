@@ -10,7 +10,8 @@ import (
 )
 
 type Button struct {
-	BaseInteractive
+	*BaseComponent
+	*BaseInteractive
 	label           string
 	backgroundColor color.Color
 	textColor       color.Color
@@ -21,6 +22,7 @@ type Button struct {
 
 func NewButton(label string) *Button {
 	b := &Button{
+		BaseComponent:   NewBaseComponent(),
 		BaseInteractive: NewBaseInteractive(),
 		label:           label,
 		backgroundColor: color.RGBA{200, 200, 200, 255},
@@ -45,10 +47,9 @@ func NewButton(label string) *Button {
 	b.eventDispatcher.AddEventListener(EventMouseUp, func(e Event) {
 		if b.isPressed && b.isHovered {
 			b.eventDispatcher.DispatchEvent(Event{
-				Type:      EventClick,
-				X:         e.X,
-				Y:         e.Y,
-				Component: b,
+				Type: EventClick,
+				X:    e.X,
+				Y:    e.Y,
 			})
 		}
 		b.isPressed = false

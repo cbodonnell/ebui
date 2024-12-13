@@ -1,6 +1,8 @@
 package ebui
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 type InputManager struct {
 	lastMousePressed bool
@@ -12,6 +14,7 @@ func NewInputManager() *InputManager {
 }
 
 func (u *InputManager) Update(root Component) {
+	// Handle hover and click events
 	x, y := ebiten.CursorPosition()
 	fx, fy := float64(x), float64(y)
 	mousePressed := ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
@@ -20,18 +23,16 @@ func (u *InputManager) Update(root Component) {
 	if target != u.hovered {
 		if u.hovered != nil {
 			u.hovered.HandleEvent(Event{
-				Type:      EventMouseLeave,
-				X:         fx,
-				Y:         fy,
-				Component: u.hovered,
+				Type: EventMouseLeave,
+				X:    fx,
+				Y:    fy,
 			})
 		}
 		if target != nil {
 			target.HandleEvent(Event{
-				Type:      EventMouseEnter,
-				X:         fx,
-				Y:         fy,
-				Component: target,
+				Type: EventMouseEnter,
+				X:    fx,
+				Y:    fy,
 			})
 		}
 		u.hovered = target
@@ -40,23 +41,32 @@ func (u *InputManager) Update(root Component) {
 	if u.hovered != nil {
 		if mousePressed && !u.lastMousePressed {
 			u.hovered.HandleEvent(Event{
-				Type:      EventMouseDown,
-				X:         fx,
-				Y:         fy,
-				Component: u.hovered,
+				Type: EventMouseDown,
+				X:    fx,
+				Y:    fy,
 			})
 		}
 		if !mousePressed && u.lastMousePressed {
 			u.hovered.HandleEvent(Event{
-				Type:      EventMouseUp,
-				X:         fx,
-				Y:         fy,
-				Component: u.hovered,
+				Type: EventMouseUp,
+				X:    fx,
+				Y:    fy,
 			})
 		}
 	}
 
 	u.lastMousePressed = mousePressed
+
+	// Handle mouse wheel events
+	wheelX, wheelY := ebiten.Wheel()
+	scrollable := findScrollableAt(fx, fy, root)
+	if scrollable != nil {
+		scrollable.HandleEvent(Event{
+			Type: EventMouseWheel,
+			X:    wheelX,
+			Y:    wheelY,
+		})
+	}
 }
 
 func findInteractableAt(x, y float64, c Component) Interactive {
@@ -79,6 +89,30 @@ func findInteractableAt(x, y float64, c Component) Interactive {
 	// If it is, check if the point is within the bounds
 	if c.Contains(x, y) {
 		return interactive
+	}
+	return nil
+}
+
+func findScrollableAt(x, y float64, c Component) *ScrollableContainer {
+	if container, ok := c.(Container); ok {
+		// First check children if this component is a container
+		children := container.GetChildren()
+		// Iterate backwards to check the top-most first
+		for i := len(children) - 1; i >= 0; i-- {
+			child := children[i]
+			if interactive := findScrollableAt(x, y, child); interactive != nil {
+				return interactive
+			}
+		}
+	}
+	// Check if this component is scrollable
+	scrollable, ok := c.(*ScrollableContainer)
+	if !ok {
+		return nil
+	}
+	// If it is, check if the point is within the bounds
+	if c.Contains(x, y) {
+		return scrollable
 	}
 	return nil
 }
