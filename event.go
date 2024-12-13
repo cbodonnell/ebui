@@ -10,13 +10,13 @@ const (
 	EventMouseEnter
 	EventMouseLeave
 	EventClick
+	EventMouseWheel
 )
 
 // Event represents a UI event
 type Event struct {
-	Type      EventType
-	X, Y      float64
-	Component Component
+	Type EventType
+	X, Y float64
 }
 
 // EventHandler is a function that handles events
