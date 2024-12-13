@@ -19,6 +19,15 @@ func (u *InputManager) Update(root Component) {
 	fx, fy := float64(x), float64(y)
 	mousePressed := ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
 
+	// Add MouseMove event handling
+	if u.hovered != nil {
+		u.hovered.HandleEvent(Event{
+			Type: EventMouseMove,
+			X:    fx,
+			Y:    fy,
+		})
+	}
+
 	target := findInteractableAt(fx, fy, root)
 	if target != u.hovered {
 		if u.hovered != nil {

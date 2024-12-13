@@ -58,6 +58,14 @@ func NewButton(label string) *Button {
 	return b
 }
 
+func (b *Button) GetLabel() string {
+	return b.label
+}
+
+func (b *Button) SetLabel(label string) {
+	b.label = label
+}
+
 func (b *Button) OnClick(handler func()) {
 	b.eventDispatcher.AddEventListener(EventClick, func(e Event) {
 		handler()

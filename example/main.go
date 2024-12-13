@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"math/rand"
 
 	"github.com/cbodonnell/ebui"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -12,11 +13,14 @@ import (
 var _ ebiten.Game = &Game{}
 
 type Game struct {
-	ui *ebui.Manager
+	ui         *ebui.Manager
+	scrollable *ebui.ScrollableContainer
+	nextID     int
 }
 
 func NewGame() *Game {
-	ebui.Debug = true
+	// ebui.Debug = true
+	game := &Game{nextID: 1}
 
 	root := ebui.NewVStackContainer(20, ebui.AlignCenter)
 	root.SetSize(ebui.Size{
@@ -39,20 +43,41 @@ func NewGame() *Game {
 	})
 	header.SetBackground(color.RGBA{220, 220, 220, 255})
 
-	// Add header buttons
-	for i := 1; i <= 3; i++ {
-		btn := ebui.NewButton(fmt.Sprintf("Action %d", i))
-		btn.SetSize(ebui.Size{
-			Width:  120,
-			Height: 40,
-		})
-		btn.OnClick(func(i int) func() {
-			return func() {
-				log.Printf("Action %d clicked", i)
-			}
-		}(i))
-		header.AddChild(btn)
-	}
+	// Add Item button
+	addBtn := ebui.NewButton("Add Item")
+	addBtn.SetSize(ebui.Size{
+		Width:  120,
+		Height: 40,
+	})
+	addBtn.OnClick(func() {
+		game.addItem()
+	})
+
+	// Add 5 Items button
+	addMultiBtn := ebui.NewButton("Add 5 Items")
+	addMultiBtn.SetSize(ebui.Size{
+		Width:  120,
+		Height: 40,
+	})
+	addMultiBtn.OnClick(func() {
+		for i := 0; i < 5; i++ {
+			game.addItem()
+		}
+	})
+
+	// Clear All button
+	clearBtn := ebui.NewButton("Clear All")
+	clearBtn.SetSize(ebui.Size{
+		Width:  120,
+		Height: 40,
+	})
+	clearBtn.OnClick(func() {
+		game.clearItems()
+	})
+
+	header.AddChild(addBtn)
+	header.AddChild(addMultiBtn)
+	header.AddChild(clearBtn)
 
 	// Create scrollable content area
 	scrollable := ebui.NewScrollableContainer(ebui.NewVerticalStack(ebui.StackConfig{
@@ -71,66 +96,104 @@ func NewGame() *Game {
 		Left:   10,
 	})
 
-	// Add items to scrollable container
-	for i := 1; i <= 10; i++ {
-		// Create row container
-		row := ebui.NewHStackContainer(10, ebui.AlignStart)
-		row.SetSize(ebui.Size{
-			Width:  740,
-			Height: 50,
-		})
-		row.SetBackground(color.RGBA{245, 245, 245, 255})
+	game.scrollable = scrollable
 
-		// Add item label
-		label := ebui.NewButton(fmt.Sprintf("Item %d", i))
-		label.SetSize(ebui.Size{
-			Width:  200,
-			Height: 40,
-		})
-		label.OnClick(func(i int) func() {
-			return func() {
-				log.Printf("Item %d selected", i)
-			}
-		}(i))
-
-		// Add action buttons
-		editBtn := ebui.NewButton("Edit")
-		editBtn.SetSize(ebui.Size{
-			Width:  100,
-			Height: 40,
-		})
-		editBtn.OnClick(func(i int) func() {
-			return func() {
-				log.Printf("Edit item %d", i)
-			}
-		}(i))
-
-		deleteBtn := ebui.NewButton("Delete")
-		deleteBtn.SetSize(ebui.Size{
-			Width:  100,
-			Height: 40,
-		})
-		deleteBtn.OnClick(func(i int) func() {
-			return func() {
-				log.Printf("Delete item %d", i)
-			}
-		}(i))
-
-		// Add all buttons to row
-		row.AddChild(label)
-		row.AddChild(editBtn)
-		row.AddChild(deleteBtn)
-
-		// Add row to scrollable container
-		scrollable.AddChild(row)
+	// Add some initial items
+	for i := 0; i < 5; i++ {
+		game.addItem()
 	}
 
 	root.AddChild(header)
 	root.AddChild(scrollable)
 
-	ui := ebui.NewManager(root)
+	game.ui = ebui.NewManager(root)
+	return game
+}
 
-	return &Game{ui: ui}
+func (g *Game) addItem() {
+	priority := []string{"Low", "Medium", "High"}[rand.Intn(3)]
+	status := []string{"New", "In Progress", "Done"}[rand.Intn(3)]
+
+	// Create row container
+	row := ebui.NewHStackContainer(10, ebui.AlignStart)
+	row.SetSize(ebui.Size{
+		Width:  740,
+		Height: 50,
+	})
+	row.SetBackground(color.RGBA{245, 245, 245, 255})
+
+	// ID label
+	idLabel := ebui.NewButton(fmt.Sprintf("Item %d", g.nextID))
+	idLabel.SetSize(ebui.Size{
+		Width:  100,
+		Height: 40,
+	})
+
+	// Priority label
+	priorityLabel := ebui.NewButton(priority)
+	priorityLabel.SetSize(ebui.Size{
+		Width:  100,
+		Height: 40,
+	})
+	// Set different colors for different priorities
+	switch priority {
+	case "Low":
+		priorityLabel.SetBackground(color.RGBA{144, 238, 144, 255}) // Light green
+	case "Medium":
+		priorityLabel.SetBackground(color.RGBA{255, 218, 185, 255}) // Peach
+	case "High":
+		priorityLabel.SetBackground(color.RGBA{255, 182, 193, 255}) // Light pink
+	}
+
+	// Status button that cycles through states
+	statusBtn := ebui.NewButton(status)
+	statusBtn.SetSize(ebui.Size{
+		Width:  120,
+		Height: 40,
+	})
+	statusBtn.OnClick(func() {
+		currentStatus := statusBtn.GetLabel()
+		var newStatus string
+		switch currentStatus {
+		case "New":
+			newStatus = "In Progress"
+			statusBtn.SetBackground(color.RGBA{255, 218, 185, 255}) // Peach
+		case "In Progress":
+			newStatus = "Done"
+			statusBtn.SetBackground(color.RGBA{144, 238, 144, 255}) // Light green
+		case "Done":
+			newStatus = "New"
+			statusBtn.SetBackground(color.RGBA{200, 200, 200, 255}) // Gray
+		}
+		statusBtn.SetLabel(newStatus)
+	})
+
+	// Delete button
+	deleteBtn := ebui.NewButton("Delete")
+	deleteBtn.SetSize(ebui.Size{
+		Width:  100,
+		Height: 40,
+	})
+	deleteBtn.SetBackground(color.RGBA{255, 192, 192, 255}) // Light red
+	deleteBtn.OnClick(func() {
+		g.scrollable.RemoveChild(row)
+	})
+
+	// Add all elements to row
+	row.AddChild(idLabel)
+	row.AddChild(priorityLabel)
+	row.AddChild(statusBtn)
+	row.AddChild(deleteBtn)
+
+	// Add row to scrollable container
+	g.scrollable.AddChild(row)
+	g.nextID++
+}
+
+func (g *Game) clearItems() {
+	for len(g.scrollable.GetChildren()) > 0 {
+		g.scrollable.RemoveChild(g.scrollable.GetChildren()[0])
+	}
 }
 
 func (g *Game) Update() error {
@@ -147,7 +210,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	ebiten.SetWindowSize(800, 600)
-	ebiten.SetWindowTitle("EBUI Demo")
+	ebiten.SetWindowTitle("EBUI Task Manager Demo")
 
 	if err := ebiten.RunGame(NewGame()); err != nil {
 		log.Fatal(err)
