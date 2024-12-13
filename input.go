@@ -7,6 +7,8 @@ import (
 type InputManager struct {
 	lastMousePressed bool
 	hovered          Interactive
+	activeScroller   *ScrollableContainer
+	lastX, lastY     float64
 }
 
 func NewInputManager() *InputManager {
@@ -14,20 +16,32 @@ func NewInputManager() *InputManager {
 }
 
 func (u *InputManager) Update(root Component) {
-	// Handle hover and click events
 	x, y := ebiten.CursorPosition()
 	fx, fy := float64(x), float64(y)
 	mousePressed := ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
 
-	// Add MouseMove event handling
-	if u.hovered != nil {
-		u.hovered.HandleEvent(Event{
+	// Handle mouse up anywhere
+	if u.lastMousePressed && !mousePressed {
+		if u.activeScroller != nil {
+			u.activeScroller.HandleEvent(Event{
+				Type: EventMouseUp,
+				X:    fx,
+				Y:    fy,
+			})
+			u.activeScroller = nil
+		}
+	}
+
+	// Always send mouse move events to active scroller
+	if u.activeScroller != nil {
+		u.activeScroller.HandleEvent(Event{
 			Type: EventMouseMove,
 			X:    fx,
 			Y:    fy,
 		})
 	}
 
+	// Normal hover and click handling
 	target := findInteractableAt(fx, fy, root)
 	if target != u.hovered {
 		if u.hovered != nil {
@@ -54,6 +68,13 @@ func (u *InputManager) Update(root Component) {
 				X:    fx,
 				Y:    fy,
 			})
+			// If this is a scrollable container and we're clicking the scrollbar,
+			// make it the active scroller
+			if scrollable, ok := u.hovered.(*ScrollableContainer); ok {
+				if scrollable.isOverScrollBar(fx, fy) {
+					u.activeScroller = scrollable
+				}
+			}
 		}
 		if !mousePressed && u.lastMousePressed {
 			u.hovered.HandleEvent(Event{
@@ -65,6 +86,7 @@ func (u *InputManager) Update(root Component) {
 	}
 
 	u.lastMousePressed = mousePressed
+	u.lastX, u.lastY = fx, fy
 
 	// Handle mouse wheel events
 	wheelX, wheelY := ebiten.Wheel()
