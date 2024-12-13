@@ -70,6 +70,11 @@ func (u *InputManager) Update(root Component) {
 }
 
 func findInteractableAt(x, y float64, c Component) Interactive {
+	contains := c.Contains(x, y)
+	if !contains {
+		return nil
+	}
+
 	if container, ok := c.(Container); ok {
 		// First check children if this component is a container
 		children := container.GetChildren()
@@ -86,14 +91,19 @@ func findInteractableAt(x, y float64, c Component) Interactive {
 	if !ok {
 		return nil
 	}
-	// If it is, check if the point is within the bounds
-	if c.Contains(x, y) {
+	// If it is, and the point is within the bounds, return it
+	if contains {
 		return interactive
 	}
 	return nil
 }
 
 func findScrollableAt(x, y float64, c Component) *ScrollableContainer {
+	contains := c.Contains(x, y)
+	if !contains {
+		return nil
+	}
+
 	if container, ok := c.(Container); ok {
 		// First check children if this component is a container
 		children := container.GetChildren()
@@ -110,8 +120,8 @@ func findScrollableAt(x, y float64, c Component) *ScrollableContainer {
 	if !ok {
 		return nil
 	}
-	// If it is, check if the point is within the bounds
-	if c.Contains(x, y) {
+	// If it is, and the point is within the bounds, return it
+	if contains {
 		return scrollable
 	}
 	return nil
