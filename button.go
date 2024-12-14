@@ -9,28 +9,88 @@ import (
 	"golang.org/x/image/font/basicfont"
 )
 
+var _ InteractiveComponent = &Button{}
+
 type Button struct {
 	*BaseComponent
 	*BaseInteractive
-	label           string
-	backgroundColor color.Color
-	textColor       color.Color
-	font            font.Face
-	isHovered       bool
-	isPressed       bool
+	label     string
+	textColor color.Color
+	font      font.Face
+	colors    ButtonColors
+	isHovered bool
+	isPressed bool
 }
 
-func NewButton(label string) *Button {
+type ButtonColors struct {
+	Default color.Color
+	Hovered color.Color
+	Pressed color.Color
+}
+
+func WithLabel(label string) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Button); ok {
+			b.label = label
+		}
+	}
+}
+
+func WithTextColor(color color.Color) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Button); ok {
+			b.textColor = color
+		}
+	}
+}
+
+func WithFont(font font.Face) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Button); ok {
+			b.font = font
+		}
+	}
+}
+
+func WithClickHandler(handler EventHandler) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Button); ok {
+			b.eventDispatcher.AddEventListener(EventClick, handler)
+		}
+	}
+}
+
+func WithButtonColors(colors ButtonColors) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Button); ok {
+			b.colors = colors
+		}
+	}
+}
+
+func NewButton(opts ...ComponentOpt) *Button {
 	b := &Button{
-		BaseComponent:   NewBaseComponent(),
+		BaseComponent:   NewBaseComponent(opts...),
 		BaseInteractive: NewBaseInteractive(),
-		label:           label,
-		backgroundColor: color.RGBA{200, 200, 200, 255},
-		textColor:       color.Black,
-		font:            basicfont.Face7x13,
+		textColor:       color.Black,        // Default text color
+		font:            basicfont.Face7x13, // Default font
+		colors: ButtonColors{ // Default colors
+			Default: color.RGBA{200, 200, 200, 255},
+			Hovered: color.RGBA{220, 220, 220, 255},
+			Pressed: color.RGBA{170, 170, 170, 255},
+		},
 	}
 
-	// Set up event handlers
+	for _, opt := range opts {
+		opt(b)
+	}
+
+	b.registerEventListeners()
+
+	return b
+}
+
+func (b *Button) registerEventListeners() {
 	b.eventDispatcher.AddEventListener(EventMouseEnter, func(e Event) {
 		b.isHovered = true
 	})
@@ -47,15 +107,14 @@ func NewButton(label string) *Button {
 	b.eventDispatcher.AddEventListener(EventMouseUp, func(e Event) {
 		if b.isPressed && b.isHovered {
 			b.eventDispatcher.DispatchEvent(Event{
-				Type: EventClick,
-				X:    e.X,
-				Y:    e.Y,
+				Type:      EventClick,
+				X:         e.X,
+				Y:         e.Y,
+				Component: b,
 			})
 		}
 		b.isPressed = false
 	})
-
-	return b
 }
 
 func (b *Button) GetLabel() string {
@@ -66,13 +125,10 @@ func (b *Button) SetLabel(label string) {
 	b.label = label
 }
 
-func (b *Button) OnClick(handler func()) {
-	b.eventDispatcher.AddEventListener(EventClick, func(e Event) {
-		handler()
-	})
-}
-
 func (b *Button) Draw(screen *ebiten.Image) {
+	if !b.size.IsDrawable() {
+		panic("Button must have a size")
+	}
 	b.BaseComponent.drawBackground(screen)
 	b.draw(screen)
 	b.BaseComponent.drawDebug(screen)
@@ -87,11 +143,11 @@ func (b Button) draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X, pos.Y)
 
-	bgColor := b.backgroundColor
+	bgColor := b.colors.Default
 	if b.isPressed {
-		bgColor = color.RGBA{170, 170, 170, 255}
+		bgColor = b.colors.Pressed
 	} else if b.isHovered {
-		bgColor = color.RGBA{220, 220, 220, 255}
+		bgColor = b.colors.Hovered
 	}
 
 	buttonImage := ebiten.NewImage(int(size.Width), int(size.Height))

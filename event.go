@@ -15,8 +15,9 @@ const (
 
 // Event represents a UI event
 type Event struct {
-	Type EventType
-	X, Y float64
+	Type      EventType
+	X, Y      float64
+	Component Component
 }
 
 // EventHandler is a function that handles events

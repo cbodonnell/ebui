@@ -22,162 +22,151 @@ func NewGame() *Game {
 	// ebui.Debug = true
 	game := &Game{nextID: 1}
 
-	root := ebui.NewVStackContainer(20, ebui.AlignCenter)
-	root.SetSize(ebui.Size{
-		Width:  800,
-		Height: 600,
-	})
-	root.SetPadding(ebui.Padding{
-		Top:    20,
-		Right:  20,
-		Bottom: 20,
-		Left:   20,
-	})
-	root.SetBackground(color.RGBA{240, 240, 240, 255})
+	root := ebui.NewBaseContainer(
+		ebui.WithSize(800, 600),
+	)
+
+	vstack := ebui.NewLayoutContainer(
+		ebui.WithSize(800, 600),
+		ebui.WithPadding(20, 20, 20, 20),
+		ebui.WithBackground(color.RGBA{240, 240, 240, 255}),
+		ebui.WithLayout(ebui.NewVerticalStackLayout(20, ebui.AlignStart)),
+	)
 
 	// Header section
-	header := ebui.NewHStackContainer(10, ebui.AlignCenter)
-	header.SetSize(ebui.Size{
-		Width:  760,
-		Height: 60,
-	})
-	header.SetBackground(color.RGBA{220, 220, 220, 255})
+	header := ebui.NewLayoutContainer(
+		ebui.WithSize(760, 60),
+		ebui.WithBackground(color.RGBA{220, 220, 220, 255}),
+		ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignCenter)),
+	)
 
 	// Add Item button
-	addBtn := ebui.NewButton("Add Item")
-	addBtn.SetSize(ebui.Size{
-		Width:  120,
-		Height: 40,
-	})
-	addBtn.OnClick(func() {
-		game.addItem()
-	})
+	addBtn := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithLabel("Add Item"),
+		ebui.WithClickHandler(func(e ebui.Event) { game.addItem() }),
+	)
 
 	// Add 5 Items button
-	addMultiBtn := ebui.NewButton("Add 5 Items")
-	addMultiBtn.SetSize(ebui.Size{
-		Width:  120,
-		Height: 40,
-	})
-	addMultiBtn.OnClick(func() {
-		for i := 0; i < 5; i++ {
-			game.addItem()
-		}
-	})
+	addMultiBtn := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithLabel("Add 5 Items"),
+		ebui.WithClickHandler(func(e ebui.Event) {
+			for i := 0; i < 5; i++ {
+				game.addItem()
+			}
+		}),
+	)
 
 	// Clear All button
-	clearBtn := ebui.NewButton("Clear All")
-	clearBtn.SetSize(ebui.Size{
-		Width:  120,
-		Height: 40,
-	})
-	clearBtn.OnClick(func() {
-		game.clearItems()
-	})
+	clearBtn := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithLabel("Clear All"),
+		ebui.WithClickHandler(func(e ebui.Event) { game.clearItems() }),
+	)
 
 	header.AddChild(addBtn)
 	header.AddChild(addMultiBtn)
 	header.AddChild(clearBtn)
 
 	// Create scrollable content area
-	scrollable := ebui.NewScrollableContainer(ebui.NewVerticalStack(ebui.StackConfig{
-		Spacing:   10,
-		Alignment: ebui.AlignStart,
-	}))
-	scrollable.SetSize(ebui.Size{
-		Width:  760,
-		Height: 480,
-	})
-	scrollable.SetBackground(color.RGBA{255, 255, 255, 255})
-	scrollable.SetPadding(ebui.Padding{
-		Top:    10,
-		Right:  10,
-		Bottom: 10,
-		Left:   10,
-	})
+	scrollable := ebui.NewScrollableContainer(
+		ebui.WithSize(760, 480),
+		ebui.WithPadding(10, 10, 10, 10),
+		ebui.WithBackground(color.RGBA{255, 255, 255, 255}),
+		ebui.WithLayout(ebui.NewVerticalStackLayout(10, ebui.AlignStart)),
+	)
 
 	game.scrollable = scrollable
+
+	vstack.AddChild(header)
+	vstack.AddChild(scrollable)
+
+	floaters := ebui.NewBaseContainer()
+
+	floatBtn := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithPosition(60, 60),
+		ebui.WithLabel("Floater"),
+		ebui.WithClickHandler(func(e ebui.Event) {
+			fmt.Println("Floating button clicked!")
+		}),
+	)
+
+	floaters.AddChild(floatBtn)
+
+	root.AddChild(vstack)
+	root.AddChild(floaters)
+
+	game.ui = ebui.NewManager(root)
 
 	// Add some initial items
 	for i := 0; i < 5; i++ {
 		game.addItem()
 	}
 
-	root.AddChild(header)
-	root.AddChild(scrollable)
-
-	game.ui = ebui.NewManager(root)
 	return game
 }
 
 func (g *Game) addItem() {
-	priority := []string{"Low", "Medium", "High"}[rand.Intn(3)]
+	i := rand.Intn(3)
+	priority := []string{"Low", "Medium", "High"}[i]
 	status := []string{"New", "In Progress", "Done"}[rand.Intn(3)]
+	background := []color.RGBA{
+		{144, 238, 144, 255}, // Light green
+		{255, 218, 185, 255}, // Peach
+		{255, 182, 193, 255}, // Light pink
+	}[i]
 
 	// Create row container
-	row := ebui.NewHStackContainer(10, ebui.AlignStart)
-	row.SetSize(ebui.Size{
-		Width:  740,
-		Height: 50,
-	})
-	row.SetBackground(color.RGBA{245, 245, 245, 255})
+	row := ebui.NewLayoutContainer(
+		ebui.WithSize(740, 50),
+		ebui.WithBackground(color.RGBA{245, 245, 245, 255}),
+		ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignStart)),
+	)
 
 	// ID label
-	idLabel := ebui.NewButton(fmt.Sprintf("Item %d", g.nextID))
-	idLabel.SetSize(ebui.Size{
-		Width:  100,
-		Height: 40,
-	})
+	idLabel := ebui.NewButton(
+		ebui.WithSize(100, 40),
+		ebui.WithLabel(fmt.Sprintf("Item %d", g.nextID)),
+	)
 
 	// Priority label
-	priorityLabel := ebui.NewButton(priority)
-	priorityLabel.SetSize(ebui.Size{
-		Width:  100,
-		Height: 40,
-	})
-	// Set different colors for different priorities
-	switch priority {
-	case "Low":
-		priorityLabel.SetBackground(color.RGBA{144, 238, 144, 255}) // Light green
-	case "Medium":
-		priorityLabel.SetBackground(color.RGBA{255, 218, 185, 255}) // Peach
-	case "High":
-		priorityLabel.SetBackground(color.RGBA{255, 182, 193, 255}) // Light pink
-	}
+	priorityLabel := ebui.NewButton(
+		ebui.WithSize(100, 40),
+		ebui.WithLabel(priority),
+		ebui.WithBackground(background),
+	)
 
 	// Status button that cycles through states
-	statusBtn := ebui.NewButton(status)
-	statusBtn.SetSize(ebui.Size{
-		Width:  120,
-		Height: 40,
-	})
-	statusBtn.OnClick(func() {
-		currentStatus := statusBtn.GetLabel()
-		var newStatus string
-		switch currentStatus {
-		case "New":
-			newStatus = "In Progress"
-			statusBtn.SetBackground(color.RGBA{255, 218, 185, 255}) // Peach
-		case "In Progress":
-			newStatus = "Done"
-			statusBtn.SetBackground(color.RGBA{144, 238, 144, 255}) // Light green
-		case "Done":
-			newStatus = "New"
-			statusBtn.SetBackground(color.RGBA{200, 200, 200, 255}) // Gray
-		}
-		statusBtn.SetLabel(newStatus)
-	})
+	statusBtn := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithLabel(status),
+		ebui.WithClickHandler(func(e ebui.Event) {
+			b := e.Component.(*ebui.Button)
+			currentStatus := b.GetLabel()
+			var newStatus string
+			switch currentStatus {
+			case "New":
+				newStatus = "In Progress"
+			case "In Progress":
+				newStatus = "Done"
+			case "Done":
+				newStatus = "New"
+			}
+			b.SetLabel(newStatus)
+		}),
+	)
 
 	// Delete button
-	deleteBtn := ebui.NewButton("Delete")
-	deleteBtn.SetSize(ebui.Size{
-		Width:  100,
-		Height: 40,
-	})
-	deleteBtn.SetBackground(color.RGBA{255, 192, 192, 255}) // Light red
-	deleteBtn.OnClick(func() {
-		g.scrollable.RemoveChild(row)
-	})
+	deleteBtn := ebui.NewButton(
+		ebui.WithSize(100, 40),
+		ebui.WithLabel("Delete"),
+		ebui.WithBackground(color.RGBA{255, 192, 192, 255}), // Light red
+		ebui.WithClickHandler(func(e ebui.Event) {
+			g.scrollable.RemoveChild(row)
+		}),
+	)
 
 	// Add all elements to row
 	row.AddChild(idLabel)

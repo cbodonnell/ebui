@@ -18,14 +18,23 @@ type ScrollableContainer struct {
 	scrollBarWidth  float64
 }
 
-func NewScrollableContainer(layout Layout) *ScrollableContainer {
+func NewScrollableContainer(opts ...ComponentOpt) *ScrollableContainer {
 	sc := &ScrollableContainer{
 		BaseInteractive: NewBaseInteractive(),
-		LayoutContainer: NewLayoutContainer(layout),
-		scrollOffset:    Position{X: 0, Y: 0},
+		LayoutContainer: NewLayoutContainer(opts...),
 		scrollBarWidth:  12, // Width of scroll bar in pixels
 	}
 
+	for _, opt := range opts {
+		opt(sc)
+	}
+
+	sc.registerEventListeners()
+
+	return sc
+}
+
+func (sc *ScrollableContainer) registerEventListeners() {
 	// Handle mouse wheel events
 	sc.eventDispatcher.AddEventListener(EventMouseWheel, func(e Event) {
 		wheelY := e.Y
@@ -58,8 +67,6 @@ func NewScrollableContainer(layout Layout) *ScrollableContainer {
 			sc.clampScrollOffset()
 		}
 	})
-
-	return sc
 }
 
 func (sc *ScrollableContainer) Update() error {
@@ -69,10 +76,9 @@ func (sc *ScrollableContainer) Update() error {
 
 	// Update children positions
 	for _, child := range sc.children {
-		child.SetPosition(Position{
-			X: child.GetPosition().X,
-			Y: child.GetPosition().Y - sc.scrollOffset.Y,
-		})
+		pos := child.GetPosition()
+		pos.Y -= sc.scrollOffset.Y
+		child.SetPosition(pos)
 	}
 
 	return sc.BaseContainer.Update()

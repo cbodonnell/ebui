@@ -23,22 +23,53 @@ type StackConfig struct {
 
 // StackLayout implements vertical or horizontal stacking of components
 type StackLayout struct {
-	Vertical bool
-	Config   StackConfig
+	Horizontal bool
+	Config     StackConfig
 }
 
-func NewVerticalStack(config StackConfig) *StackLayout {
-	return &StackLayout{
-		Vertical: true,
-		Config:   config,
+type StackLayoutOpt func(l *StackLayout)
+
+func WithHorizontal() StackLayoutOpt {
+	return func(l *StackLayout) {
+		l.Horizontal = true
 	}
 }
 
-func NewHorizontalStack(config StackConfig) *StackLayout {
-	return &StackLayout{
-		Vertical: false,
-		Config:   config,
+func WithSpacing(spacing float64) StackLayoutOpt {
+	return func(l *StackLayout) {
+		l.Config.Spacing = spacing
 	}
+}
+
+func WithAlignment(align Alignment) StackLayoutOpt {
+	return func(l *StackLayout) {
+		l.Config.Alignment = align
+	}
+}
+
+func NewStackLayout(opts ...StackLayoutOpt) *StackLayout {
+	l := &StackLayout{}
+	for _, opt := range opts {
+		opt(l)
+	}
+	return l
+}
+
+// NewVerticalStackLayout is a helper function to create a vertical stack layout
+func NewVerticalStackLayout(spacing float64, align Alignment) *StackLayout {
+	return NewStackLayout(
+		WithSpacing(spacing),
+		WithAlignment(align),
+	)
+}
+
+// NewHorizontalStackLayout is a helper function to create a horizontal stack layout
+func NewHorizontalStackLayout(spacing float64, align Alignment) *StackLayout {
+	return NewStackLayout(
+		WithHorizontal(),
+		WithSpacing(spacing),
+		WithAlignment(align),
+	)
 }
 
 // ArrangeChildren positions all children in a vertical or horizontal stack
@@ -63,7 +94,7 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 		size := child.GetSize()
 		childSizes[i] = size
 
-		if l.Vertical {
+		if !l.Horizontal {
 			totalFixedMainAxis += size.Height
 		} else {
 			totalFixedMainAxis += size.Width
@@ -80,7 +111,7 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 	startX := containerPadding.Left
 	startY := containerPadding.Top
 
-	if !l.Vertical {
+	if l.Horizontal {
 		// For horizontal stack, calculate starting X for the entire group
 		switch l.Config.Alignment {
 		case AlignStart:
@@ -108,9 +139,9 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 
 	for i, child := range children {
 		size := childSizes[i]
-		pos := Position{Absolute: false}
+		pos := Position{Relative: true}
 
-		if l.Vertical {
+		if !l.Horizontal {
 			// For vertical stack
 			pos.Y = currentY
 			switch l.Config.Alignment {
@@ -131,7 +162,6 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 		}
 
 		child.SetPosition(pos)
-		child.SetSize(size)
 	}
 }
 
@@ -149,7 +179,7 @@ func (l *StackLayout) GetMinSize(container Container) Size {
 	for i, child := range children {
 		size := child.GetSize()
 
-		if l.Vertical {
+		if !l.Horizontal {
 			totalHeight += size.Height
 			if i > 0 {
 				totalHeight += l.Config.Spacing
@@ -168,7 +198,7 @@ func (l *StackLayout) GetMinSize(container Container) Size {
 		}
 	}
 
-	if l.Vertical {
+	if !l.Horizontal {
 		totalWidth = maxWidth
 	} else {
 		totalHeight = maxHeight

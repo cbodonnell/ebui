@@ -18,10 +18,14 @@ type BaseContainer struct {
 	children []Component
 }
 
-func NewBaseContainer() *BaseContainer {
-	return &BaseContainer{
-		BaseComponent: NewBaseComponent(),
+func NewBaseContainer(opts ...ComponentOpt) *BaseContainer {
+	b := &BaseContainer{
+		BaseComponent: NewBaseComponent(opts...),
 	}
+	for _, opt := range opts {
+		opt(b)
+	}
+	return b
 }
 
 func (c *BaseContainer) AddChild(child Component) {

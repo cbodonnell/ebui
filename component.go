@@ -12,14 +12,17 @@ import (
 // Position represents the position of a component
 type Position struct {
 	X, Y     float64
-	Absolute bool
+	Relative bool
+	ZIndex   int
 }
 
 // Size represents the dimensions of a component
 type Size struct {
 	Width, Height float64
-	AutoWidth     bool
-	AutoHeight    bool
+}
+
+func (s Size) IsDrawable() bool {
+	return s.Width > 0 && s.Height > 0
 }
 
 // Padding represents padding around a component
@@ -45,6 +48,26 @@ type Component interface {
 
 var _ Component = &BaseComponent{}
 
+type ComponentOpt func(c Component)
+
+func WithPosition(x, y float64) ComponentOpt {
+	return func(c Component) {
+		c.SetPosition(Position{X: x, Y: y})
+	}
+}
+
+func WithSize(width, height float64) ComponentOpt {
+	return func(c Component) {
+		c.SetSize(Size{Width: width, Height: height})
+	}
+}
+
+func WithPadding(top, right, bottom, left float64) ComponentOpt {
+	return func(c Component) {
+		c.SetPadding(Padding{Top: top, Right: right, Bottom: bottom, Left: left})
+	}
+}
+
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
 	id         uint64
@@ -55,11 +78,23 @@ type BaseComponent struct {
 	parent     Container
 }
 
-func NewBaseComponent() *BaseComponent {
-	return &BaseComponent{
+func WithBackground(color color.Color) ComponentOpt {
+	return func(c Component) {
+		if bc, ok := c.(*BaseComponent); ok {
+			bc.background = color
+		}
+	}
+}
+
+func NewBaseComponent(opts ...ComponentOpt) *BaseComponent {
+	b := &BaseComponent{
 		id:         GenerateID(),
 		background: color.RGBA{0, 0, 0, 0}, // Transparent by default
 	}
+	for _, opt := range opts {
+		opt(b)
+	}
+	return b
 }
 
 func (b *BaseComponent) GetID() uint64 {
@@ -71,6 +106,10 @@ func (b *BaseComponent) Update() error {
 }
 
 func (b *BaseComponent) Draw(screen *ebiten.Image) {
+	if !b.size.IsDrawable() {
+		// Don't draw if the component has no size
+		return
+	}
 	b.drawBackground(screen)
 	b.drawDebug(screen)
 }
@@ -107,10 +146,6 @@ func (b *BaseComponent) GetPadding() Padding {
 	return b.padding
 }
 
-func (b *BaseComponent) SetBackground(color color.Color) {
-	b.background = color
-}
-
 func (b *BaseComponent) drawBackground(screen *ebiten.Image) {
 	if b.background == nil {
 		return
@@ -133,7 +168,7 @@ func (b *BaseComponent) Contains(x, y float64) bool {
 
 func (b *BaseComponent) GetAbsolutePosition() Position {
 	pos := b.position
-	if b.parent != nil && !b.position.Absolute {
+	if b.position.Relative && b.parent != nil {
 		parentPos := b.parent.GetAbsolutePosition()
 		pos.X += parentPos.X
 		pos.Y += parentPos.Y
@@ -178,9 +213,14 @@ func (b *BaseComponent) drawDebug(screen *ebiten.Image) {
 		screen.DrawImage(paddingRect, op)
 	}
 
+	positionType := "Absolute"
+	if pos.Relative {
+		positionType = "Relative"
+	}
+
 	// Draw component info with a slight shadow for better visibility
-	info := fmt.Sprintf("Pos: (%.0f, %.0f)\nSize: %.0f x %.0f\nPadding: %.0f, %.0f, %.0f, %.0f",
-		pos.X, pos.Y, size.Width, size.Height,
+	info := fmt.Sprintf("Pos: (%.0f, %.0f [%s])\nSize: %.0f x %.0f\nPadding: %.0f, %.0f, %.0f, %.0f",
+		pos.X, pos.Y, positionType, size.Width, size.Height,
 		padding.Top, padding.Right, padding.Bottom, padding.Left)
 
 	// Draw text shadow
