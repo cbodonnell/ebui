@@ -6,7 +6,7 @@ import (
 
 type InputManager struct {
 	lastMousePressed bool
-	hovered          Interactive
+	hovered          InteractiveComponent
 	activeScroller   *ScrollableContainer
 	lastX, lastY     float64
 }
@@ -33,12 +33,12 @@ func (u *InputManager) Update(root Component) {
 // handleActiveScroller manages the currently active scrolling component
 func (u *InputManager) handleActiveScroller(fx, fy float64, mousePressed bool) {
 	if u.lastMousePressed && !mousePressed && u.activeScroller != nil {
-		u.activeScroller.HandleEvent(newEvent(EventMouseUp, fx, fy))
+		u.activeScroller.HandleEvent(Event{EventMouseUp, fx, fy, u.activeScroller})
 		u.activeScroller = nil
 	}
 
 	if u.activeScroller != nil {
-		u.activeScroller.HandleEvent(newEvent(EventMouseMove, fx, fy))
+		u.activeScroller.HandleEvent(Event{EventMouseMove, fx, fy, u.activeScroller})
 	}
 }
 
@@ -50,10 +50,10 @@ func (u *InputManager) handleHoverEvents(fx, fy float64, root Component) {
 	}
 
 	if u.hovered != nil {
-		u.hovered.HandleEvent(newEvent(EventMouseLeave, fx, fy))
+		u.hovered.HandleEvent(Event{EventMouseLeave, fx, fy, u.hovered})
 	}
 	if target != nil {
-		target.HandleEvent(newEvent(EventMouseEnter, fx, fy))
+		target.HandleEvent(Event{EventMouseEnter, fx, fy, target})
 	}
 	u.hovered = target
 }
@@ -65,7 +65,7 @@ func (u *InputManager) handleMouseEvents(fx, fy float64, mousePressed bool) {
 	}
 
 	if mousePressed && !u.lastMousePressed {
-		u.hovered.HandleEvent(newEvent(EventMouseDown, fx, fy))
+		u.hovered.HandleEvent(Event{EventMouseDown, fx, fy, u.hovered})
 		if scrollable, ok := u.hovered.(*ScrollableContainer); ok {
 			if scrollable.isOverScrollBar(fx, fy) {
 				u.activeScroller = scrollable
@@ -74,7 +74,7 @@ func (u *InputManager) handleMouseEvents(fx, fy float64, mousePressed bool) {
 	}
 
 	if !mousePressed && u.lastMousePressed {
-		u.hovered.HandleEvent(newEvent(EventMouseUp, fx, fy))
+		u.hovered.HandleEvent(Event{EventMouseUp, fx, fy, u.hovered})
 	}
 }
 
@@ -82,38 +82,43 @@ func (u *InputManager) handleMouseEvents(fx, fy float64, mousePressed bool) {
 func (u *InputManager) handleWheelEvents(fx, fy float64, root Component) {
 	wheelX, wheelY := ebiten.Wheel()
 	if scrollable := findScrollableAt(fx, fy, root); scrollable != nil {
-		scrollable.HandleEvent(Event{Type: EventMouseWheel, X: wheelX, Y: wheelY})
+		scrollable.HandleEvent(Event{EventMouseWheel, wheelX, wheelY, scrollable})
 	}
-}
-
-// newEvent creates a new event with the given type and coordinates
-func newEvent(eventType EventType, x, y float64) Event {
-	return Event{Type: eventType, X: x, Y: y}
 }
 
 // findComponentAt is a generic component finder
 func findComponentAt[T any](x, y float64, c Component, check func(Component) (T, bool)) (T, bool) {
 	var zero T
-	if !c.Contains(x, y) {
-		return zero, false
-	}
 
+	contains := c.Contains(x, y)
 	if container, ok := c.(Container); ok {
 		children := container.GetChildren()
 		for i := len(children) - 1; i >= 0; i-- {
-			if found, ok := findComponentAt(x, y, children[i], check); ok {
+			// TODO: send hit checks to components and let them decide if they're hit
+			// since right now this exists to prevent input events from going through
+			// to child components outside the bounds of their parent (e.g. in a scrollable).
+			// So this sort of check should be within the scrollable component itself.
+			child := children[i]
+			if child.GetPosition().Relative && !contains {
+				continue
+			}
+			if found, ok := findComponentAt(x, y, child, check); ok {
 				return found, true
 			}
 		}
+	}
+
+	if !contains {
+		return zero, false
 	}
 
 	return check(c)
 }
 
 // findInteractableAt finds the topmost interactive component at the given coordinates
-func findInteractableAt(x, y float64, c Component) Interactive {
-	found, _ := findComponentAt(x, y, c, func(c Component) (Interactive, bool) {
-		if i, ok := c.(Interactive); ok && c.Contains(x, y) {
+func findInteractableAt(x, y float64, c Component) InteractiveComponent {
+	found, _ := findComponentAt(x, y, c, func(c Component) (InteractiveComponent, bool) {
+		if i, ok := c.(InteractiveComponent); ok && c.Contains(x, y) {
 			return i, true
 		}
 		return nil, false

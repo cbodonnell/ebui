@@ -6,6 +6,11 @@ type Interactive interface {
 	GetEventDispatcher() *EventDispatcher
 }
 
+type InteractiveComponent interface {
+	Component
+	Interactive
+}
+
 // BaseInteractive provides common interactive functionality
 type BaseInteractive struct {
 	eventDispatcher *EventDispatcher

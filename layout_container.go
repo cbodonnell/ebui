@@ -5,30 +5,23 @@ type LayoutContainer struct {
 	layout Layout
 }
 
-// Convenience constructors for common layouts
-func NewVStackContainer(spacing float64, alignment Alignment) *LayoutContainer {
-	return NewLayoutContainer(NewVerticalStack(StackConfig{
-		Spacing:   spacing,
-		Alignment: alignment,
-	}))
-}
-
-func NewHStackContainer(spacing float64, alignment Alignment) *LayoutContainer {
-	return NewLayoutContainer(NewHorizontalStack(StackConfig{
-		Spacing:   spacing,
-		Alignment: alignment,
-	}))
-}
-
-func NewLayoutContainer(layout Layout) *LayoutContainer {
-	return &LayoutContainer{
-		BaseContainer: NewBaseContainer(),
-		layout:        layout,
+func WithLayout(layout Layout) ComponentOpt {
+	return func(c Component) {
+		if lc, ok := c.(*LayoutContainer); ok {
+			lc.layout = layout
+		}
 	}
 }
 
-func (c *LayoutContainer) SetLayout(layout Layout) {
-	c.layout = layout
+func NewLayoutContainer(opts ...ComponentOpt) *LayoutContainer {
+	l := &LayoutContainer{
+		BaseContainer: NewBaseContainer(opts...),
+		layout:        NewStackLayout(), // Default layout
+	}
+	for _, opt := range opts {
+		opt(l)
+	}
+	return l
 }
 
 func (c *LayoutContainer) Update() error {
