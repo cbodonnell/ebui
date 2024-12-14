@@ -20,6 +20,12 @@ type Event struct {
 	Component Component
 }
 
+// EventBoundary represents a component that controls event propagation
+type EventBoundary interface {
+	// Returns true if the event should propagate to children
+	ShouldPropagateEvent(event Event, x, y float64) bool
+}
+
 // EventHandler is a function that handles events
 type EventHandler func(event Event)
 

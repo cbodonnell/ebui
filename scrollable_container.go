@@ -8,6 +8,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var _ EventBoundary = &ScrollableContainer{}
+
 type ScrollableContainer struct {
 	*BaseInteractive
 	*LayoutContainer
@@ -69,6 +71,16 @@ func (sc *ScrollableContainer) registerEventListeners() {
 	})
 }
 
+func (sc *ScrollableContainer) AddChild(child Component) {
+	sc.LayoutContainer.AddChild(child)
+	sc.clampScrollOffset()
+}
+
+func (sc *ScrollableContainer) RemoveChild(child Component) {
+	sc.LayoutContainer.RemoveChild(child)
+	sc.clampScrollOffset()
+}
+
 func (sc *ScrollableContainer) Update() error {
 	if sc.layout != nil {
 		sc.layout.ArrangeChildren(sc)
@@ -114,6 +126,10 @@ func (sc *ScrollableContainer) Contains(x, y float64) bool {
 
 	// Check if the point is within the visible area
 	return y >= float64(bounds.Min.Y) && y <= float64(bounds.Max.Y)
+}
+
+func (sc *ScrollableContainer) ShouldPropagateEvent(event Event, x, y float64) bool {
+	return sc.Contains(x, y)
 }
 
 // Scroll bar related methods

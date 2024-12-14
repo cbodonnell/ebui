@@ -90,25 +90,25 @@ func (u *InputManager) handleWheelEvents(fx, fy float64, root Component) {
 func findComponentAt[T any](x, y float64, c Component, check func(Component) (T, bool)) (T, bool) {
 	var zero T
 
-	contains := c.Contains(x, y)
+	// Check if component controls its own event boundary
+	if boundary, ok := c.(EventBoundary); ok {
+		if !boundary.ShouldPropagateEvent(Event{}, x, y) {
+			return zero, false
+		}
+	}
+
+	// Check children first
 	if container, ok := c.(Container); ok {
 		children := container.GetChildren()
 		for i := len(children) - 1; i >= 0; i-- {
-			// TODO: send hit checks to components and let them decide if they're hit
-			// since right now this exists to prevent input events from going through
-			// to child components outside the bounds of their parent (e.g. in a scrollable).
-			// So this sort of check should be within the scrollable component itself.
-			child := children[i]
-			if child.GetPosition().Relative && !contains {
-				continue
-			}
-			if found, ok := findComponentAt(x, y, child, check); ok {
+			if found, ok := findComponentAt(x, y, children[i], check); ok {
 				return found, true
 			}
 		}
 	}
 
-	if !contains {
+	// Finally check this component itself
+	if !c.Contains(x, y) {
 		return zero, false
 	}
 
