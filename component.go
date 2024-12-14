@@ -50,9 +50,9 @@ var _ Component = &BaseComponent{}
 
 type ComponentOpt func(c Component)
 
-func WithPosition(x, y float64) ComponentOpt {
+func WithPosition(pos Position) ComponentOpt {
 	return func(c Component) {
-		c.SetPosition(Position{X: x, Y: y})
+		c.SetPosition(pos)
 	}
 }
 

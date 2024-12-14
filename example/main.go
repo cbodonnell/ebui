@@ -82,18 +82,28 @@ func NewGame() *Game {
 	vstack.AddChild(header)
 	vstack.AddChild(scrollable)
 
-	floaters := ebui.NewBaseContainer()
+	floaters := ebui.NewZIndexedContainer()
 
-	floatBtn := ebui.NewButton(
+	floatBtn1 := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithPosition(60, 60),
-		ebui.WithLabel("Floater"),
+		ebui.WithPosition(ebui.Position{X: 60, Y: 60, ZIndex: 1}),
+		ebui.WithLabel("Floater 1"),
 		ebui.WithClickHandler(func(e ebui.Event) {
-			fmt.Println("Floating button clicked!")
+			fmt.Println("Floating 1 button clicked!")
 		}),
 	)
 
-	floaters.AddChild(floatBtn)
+	floatBtn2 := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithPosition(ebui.Position{X: 80, Y: 80}),
+		ebui.WithLabel("Floater 2"),
+		ebui.WithClickHandler(func(e ebui.Event) {
+			fmt.Println("Floating 2 button clicked!")
+		}),
+	)
+
+	floaters.AddChild(floatBtn1)
+	floaters.AddChild(floatBtn2)
 
 	root.AddChild(vstack)
 	root.AddChild(floaters)
