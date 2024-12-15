@@ -16,16 +16,19 @@ type Game struct {
 	ui         *ebui.Manager
 	scrollable *ebui.ScrollableContainer
 	nextID     int
+	windows    *ebui.WindowManager
 }
 
 func NewGame() *Game {
 	// ebui.Debug = true
 	game := &Game{nextID: 1}
 
+	// Create root container
 	root := ebui.NewBaseContainer(
 		ebui.WithSize(800, 600),
 	)
 
+	// Main content area
 	vstack := ebui.NewLayoutContainer(
 		ebui.WithSize(800, 600),
 		ebui.WithPadding(20, 20, 20, 20),
@@ -33,24 +36,23 @@ func NewGame() *Game {
 		ebui.WithLayout(ebui.NewVerticalStackLayout(20, ebui.AlignStart)),
 	)
 
-	// Header section
+	// Header section with buttons
 	header := ebui.NewLayoutContainer(
 		ebui.WithSize(760, 60),
 		ebui.WithBackground(color.RGBA{220, 220, 220, 255}),
 		ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignCenter)),
 	)
 
-	// Add Item button
+	// Task management buttons
 	addBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel("Add Item"),
+		ebui.WithLabel("Add Task"),
 		ebui.WithClickHandler(func(e ebui.Event) { game.addItem() }),
 	)
 
-	// Add 5 Items button
 	addMultiBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel("Add 5 Items"),
+		ebui.WithLabel("Add 5 Tasks"),
 		ebui.WithClickHandler(func(e ebui.Event) {
 			for i := 0; i < 5; i++ {
 				game.addItem()
@@ -58,64 +60,136 @@ func NewGame() *Game {
 		}),
 	)
 
-	// Clear All button
 	clearBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel("Clear All"),
+		ebui.WithLabel("Clear Tasks"),
 		ebui.WithClickHandler(func(e ebui.Event) { game.clearItems() }),
+	)
+
+	// Window management buttons
+	newWindowBtn := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithLabel("New Window"),
+		ebui.WithClickHandler(func(e ebui.Event) { game.createRandomWindow() }),
 	)
 
 	header.AddChild(addBtn)
 	header.AddChild(addMultiBtn)
 	header.AddChild(clearBtn)
+	header.AddChild(newWindowBtn)
 
-	// Create scrollable content area
+	// Create scrollable task list
 	scrollable := ebui.NewScrollableContainer(
 		ebui.WithSize(760, 480),
 		ebui.WithPadding(10, 10, 10, 10),
 		ebui.WithBackground(color.RGBA{255, 255, 255, 255}),
 		ebui.WithLayout(ebui.NewVerticalStackLayout(10, ebui.AlignStart)),
 	)
-
 	game.scrollable = scrollable
 
 	vstack.AddChild(header)
 	vstack.AddChild(scrollable)
 
-	floaters := ebui.NewZIndexedContainer()
+	// Create window manager
+	game.windows = ebui.NewWindowManager()
 
-	floatBtn1 := ebui.NewButton(
-		ebui.WithSize(120, 40),
-		ebui.WithPosition(ebui.Position{X: 60, Y: 60, ZIndex: 1}),
-		ebui.WithLabel("Floater 1"),
-		ebui.WithClickHandler(func(e ebui.Event) {
-			fmt.Println("Floating 1 button clicked!")
-		}),
-	)
+	// Create initial windows
+	game.createInfoWindow()
+	game.createStatsWindow()
 
-	floatBtn2 := ebui.NewButton(
-		ebui.WithSize(120, 40),
-		ebui.WithPosition(ebui.Position{X: 80, Y: 80}),
-		ebui.WithLabel("Floater 2"),
-		ebui.WithClickHandler(func(e ebui.Event) {
-			fmt.Println("Floating 2 button clicked!")
-		}),
-	)
-
-	floaters.AddChild(floatBtn1)
-	floaters.AddChild(floatBtn2)
-
+	// Add everything to root
 	root.AddChild(vstack)
-	root.AddChild(floaters)
+	root.AddChild(game.windows)
 
 	game.ui = ebui.NewManager(root)
 
-	// Add some initial items
+	// Add some initial tasks
 	for i := 0; i < 5; i++ {
 		game.addItem()
 	}
 
 	return game
+}
+
+func (g *Game) createInfoWindow() {
+	window := g.windows.CreateWindow(300, 200,
+		ebui.WithWindowTitle("Welcome"),
+		ebui.WithWindowColors(ebui.WindowColors{
+			Background: color.RGBA{230, 230, 230, 255},
+			Header:     color.RGBA{100, 149, 237, 255}, // Cornflower blue
+		}),
+	)
+
+	infoBtn := ebui.NewButton(
+		ebui.WithSize(280, 40),
+		ebui.WithLabel("EBUI Demo Application"),
+	)
+
+	descBtn := ebui.NewButton(
+		ebui.WithSize(280, 40),
+		ebui.WithLabel("Try dragging this window!"),
+	)
+
+	window.AddChild(infoBtn)
+	window.AddChild(descBtn)
+}
+
+func (g *Game) createStatsWindow() {
+	window := g.windows.CreateWindow(250, 180,
+		ebui.WithWindowTitle("Statistics"),
+		ebui.WithWindowColors(ebui.WindowColors{
+			Background: color.RGBA{230, 230, 230, 255},
+			Header:     color.RGBA{46, 139, 87, 255},
+		}),
+	)
+
+	updateStatsBtn := ebui.NewButton(
+		ebui.WithSize(230, 40),
+		ebui.WithLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren()))),
+		ebui.WithClickHandler(func(e ebui.Event) {
+			b := e.Component.(*ebui.Button)
+			b.SetLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren())))
+		}),
+	)
+
+	window.AddChild(updateStatsBtn)
+}
+
+func (g *Game) createRandomWindow() {
+	titles := []string{"Notes", "Settings", "Help", "About", "Debug"}
+	colors := []ebui.WindowColors{
+		{
+			Background: color.RGBA{230, 230, 230, 255},
+			Header:     color.RGBA{218, 112, 214, 255}, // Orchid
+		},
+		{
+			Background: color.RGBA{230, 230, 230, 255},
+			Header:     color.RGBA{210, 105, 30, 255}, // Chocolate
+		},
+	}
+
+	title := titles[rand.Intn(len(titles))]
+	colorScheme := colors[rand.Intn(len(colors))]
+
+	window := g.windows.CreateWindow(
+		200+rand.Float64()*100,
+		150+rand.Float64()*100,
+		ebui.WithWindowTitle(title),
+		ebui.WithWindowColors(colorScheme),
+	)
+
+	content := ebui.NewLayoutContainer(
+		ebui.WithSize(window.GetSize().Width-20, 40), // subtract window content padding
+		ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignCenter)),
+	)
+
+	btn := ebui.NewButton(
+		ebui.WithSize(content.GetSize().Width-20, 40),
+		ebui.WithLabel("Sample Content"),
+	)
+
+	content.AddChild(btn)
+	window.AddChild(content)
 }
 
 func (g *Game) addItem() {
@@ -209,7 +283,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	ebiten.SetWindowSize(800, 600)
-	ebiten.SetWindowTitle("EBUI Task Manager Demo")
+	ebiten.SetWindowTitle("EBUI Framework Demo")
 
 	if err := ebiten.RunGame(NewGame()); err != nil {
 		log.Fatal(err)

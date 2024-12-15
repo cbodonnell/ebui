@@ -8,6 +8,7 @@ type InputManager struct {
 	lastMousePressed bool
 	hovered          InteractiveComponent
 	activeScroller   *ScrollableContainer
+	activeWindow     *Window
 	lastX, lastY     float64
 }
 
@@ -21,28 +22,70 @@ func (u *InputManager) Update(root Component) {
 	fx, fy := float64(x), float64(y)
 	mousePressed := ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
 
-	u.handleActiveScroller(fx, fy, mousePressed)
-	u.handleHoverEvents(fx, fy, root)
-	u.handleMouseEvents(fx, fy, mousePressed)
+	// Handle mouse move events for active components
+	if mousePressed {
+		u.handleMouseMove(fx, fy)
+	}
+
+	// Handle active component release
+	if u.lastMousePressed && !mousePressed {
+		u.handleMouseRelease(fx, fy)
+	}
+
+	// Only handle hover and new mouse press events if we're not dragging anything
+	if u.activeWindow == nil && u.activeScroller == nil {
+		u.handleHoverEvents(fx, fy, root)
+		if mousePressed && !u.lastMousePressed {
+			u.handleMousePress(fx, fy)
+		}
+	}
+
 	u.handleWheelEvents(fx, fy, root)
 
 	u.lastMousePressed = mousePressed
 	u.lastX, u.lastY = fx, fy
 }
 
-// handleActiveScroller manages the currently active scrolling component
-func (u *InputManager) handleActiveScroller(fx, fy float64, mousePressed bool) {
-	if u.lastMousePressed && !mousePressed && u.activeScroller != nil {
-		u.activeScroller.HandleEvent(Event{EventMouseUp, fx, fy, u.activeScroller})
-		u.activeScroller = nil
-	}
-
-	if u.activeScroller != nil {
-		u.activeScroller.HandleEvent(Event{EventMouseMove, fx, fy, u.activeScroller})
+func (u *InputManager) handleMouseMove(fx, fy float64) {
+	if u.activeWindow != nil {
+		u.activeWindow.HandleEvent(Event{Type: EventMouseMove, X: fx, Y: fy, Component: u.activeWindow})
+	} else if u.activeScroller != nil {
+		u.activeScroller.HandleEvent(Event{Type: EventMouseMove, X: fx, Y: fy, Component: u.activeScroller})
 	}
 }
 
-// handleHoverEvents manages hover state changes
+func (u *InputManager) handleMouseRelease(fx, fy float64) {
+	if u.activeWindow != nil {
+		u.activeWindow.HandleEvent(Event{Type: EventMouseUp, X: fx, Y: fy, Component: u.activeWindow})
+		u.activeWindow = nil
+	} else if u.activeScroller != nil {
+		u.activeScroller.HandleEvent(Event{Type: EventMouseUp, X: fx, Y: fy, Component: u.activeScroller})
+		u.activeScroller = nil
+	} else if u.hovered != nil {
+		u.hovered.HandleEvent(Event{Type: EventMouseUp, X: fx, Y: fy, Component: u.hovered})
+	}
+}
+
+func (u *InputManager) handleMousePress(fx, fy float64) {
+	if u.hovered == nil {
+		return
+	}
+
+	u.hovered.HandleEvent(Event{Type: EventMouseDown, X: fx, Y: fy, Component: u.hovered})
+
+	// Check if we're starting a window drag
+	if window, ok := u.hovered.(*Window); ok && window.isOverHeader(fx, fy) {
+		u.activeWindow = window
+		return
+	}
+
+	// Check if we're starting a scroll
+	if scrollable, ok := u.hovered.(*ScrollableContainer); ok && scrollable.isOverScrollBar(fx, fy) {
+		u.activeScroller = scrollable
+		return
+	}
+}
+
 func (u *InputManager) handleHoverEvents(fx, fy float64, root Component) {
 	target := findInteractableAt(fx, fy, root)
 	if target == u.hovered {
@@ -50,39 +93,18 @@ func (u *InputManager) handleHoverEvents(fx, fy float64, root Component) {
 	}
 
 	if u.hovered != nil {
-		u.hovered.HandleEvent(Event{EventMouseLeave, fx, fy, u.hovered})
+		u.hovered.HandleEvent(Event{Type: EventMouseLeave, X: fx, Y: fy, Component: u.hovered})
 	}
 	if target != nil {
-		target.HandleEvent(Event{EventMouseEnter, fx, fy, target})
+		target.HandleEvent(Event{Type: EventMouseEnter, X: fx, Y: fy, Component: target})
 	}
 	u.hovered = target
 }
 
-// handleMouseEvents manages mouse press and release events
-func (u *InputManager) handleMouseEvents(fx, fy float64, mousePressed bool) {
-	if u.hovered == nil {
-		return
-	}
-
-	if mousePressed && !u.lastMousePressed {
-		u.hovered.HandleEvent(Event{EventMouseDown, fx, fy, u.hovered})
-		if scrollable, ok := u.hovered.(*ScrollableContainer); ok {
-			if scrollable.isOverScrollBar(fx, fy) {
-				u.activeScroller = scrollable
-			}
-		}
-	}
-
-	if !mousePressed && u.lastMousePressed {
-		u.hovered.HandleEvent(Event{EventMouseUp, fx, fy, u.hovered})
-	}
-}
-
-// handleWheelEvents manages mouse wheel scrolling
 func (u *InputManager) handleWheelEvents(fx, fy float64, root Component) {
 	wheelX, wheelY := ebiten.Wheel()
 	if scrollable := findScrollableAt(fx, fy, root); scrollable != nil {
-		scrollable.HandleEvent(Event{EventMouseWheel, wheelX, wheelY, scrollable})
+		scrollable.HandleEvent(Event{Type: EventMouseWheel, X: wheelX, Y: wheelY, Component: scrollable})
 	}
 }
 
@@ -97,7 +119,7 @@ func findComponentAt[T any](x, y float64, c Component, check func(Component) (T,
 		}
 	}
 
-	// Check children first
+	// Check children first (in reverse order for proper z-index handling)
 	if container, ok := c.(Container); ok {
 		children := container.GetChildren()
 		for i := len(children) - 1; i >= 0; i-- {
@@ -118,7 +140,7 @@ func findComponentAt[T any](x, y float64, c Component, check func(Component) (T,
 // findInteractableAt finds the topmost interactive component at the given coordinates
 func findInteractableAt(x, y float64, c Component) InteractiveComponent {
 	found, _ := findComponentAt(x, y, c, func(c Component) (InteractiveComponent, bool) {
-		if i, ok := c.(InteractiveComponent); ok && c.Contains(x, y) {
+		if i, ok := c.(InteractiveComponent); ok {
 			return i, true
 		}
 		return nil, false
@@ -129,7 +151,7 @@ func findInteractableAt(x, y float64, c Component) InteractiveComponent {
 // findScrollableAt finds the topmost scrollable container at the given coordinates
 func findScrollableAt(x, y float64, c Component) *ScrollableContainer {
 	found, _ := findComponentAt(x, y, c, func(c Component) (*ScrollableContainer, bool) {
-		if s, ok := c.(*ScrollableContainer); ok && c.Contains(x, y) {
+		if s, ok := c.(*ScrollableContainer); ok {
 			return s, true
 		}
 		return nil, false

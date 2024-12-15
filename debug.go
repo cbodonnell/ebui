@@ -13,8 +13,6 @@ var (
 		color.RGBA{0, 0, 255, 25},     // Blue, more transparent
 		color.RGBA{255, 0, 255, 25},   // Magenta, more transparent
 		color.RGBA{0, 255, 255, 25},   // Cyan, more transparent
-		color.RGBA{255, 255, 255, 25}, // White, more transparent
-		color.RGBA{0, 0, 0, 25},       // Black, more transparent
 		color.RGBA{128, 128, 128, 25}, // Gray, more transparent
 		color.RGBA{128, 0, 0, 25},     // Maroon, more transparent
 		color.RGBA{128, 128, 0, 25},   // Olive, more transparent
