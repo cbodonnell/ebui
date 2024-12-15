@@ -100,6 +100,26 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	w.LayoutContainer.Draw(screen)
 }
 
+func (w *Window) clampToScreen() {
+	// Get the game window bounds
+	width, height := ebiten.WindowSize()
+	screenWidth, screenHeight := float64(width), float64(height)
+
+	pos := w.GetPosition()
+	size := w.GetSize()
+
+	// Keep the window title bar on screen
+	minX := -size.Width + size.Width/2    // Keep half the window on screen
+	minY := float64(0)                    // Prevent dragging above screen
+	maxX := screenWidth - size.Width/2    // Keep half the window on screen
+	maxY := screenHeight - w.headerHeight // Keep header on screen
+
+	pos.X = clamp(pos.X, minX, maxX)
+	pos.Y = clamp(pos.Y, minY, maxY)
+
+	w.SetPosition(pos)
+}
+
 type WindowManager struct {
 	*ZIndexedContainer
 	activeWindow *Window
@@ -165,10 +185,10 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 
 func (w *Window) registerEventListeners() {
 	w.eventDispatcher.AddEventListener(EventMouseDown, func(e Event) {
-		// Activate window on any mouse down
+		// Always activate window on any mouse down within the window
 		w.manager.SetActiveWindow(w)
 
-		// Start dragging if over header
+		// Start dragging only if over header
 		if w.isOverHeader(e.X, e.Y) {
 			w.isDragging = true
 			w.dragStartX = e.X
@@ -191,6 +211,7 @@ func (w *Window) registerEventListeners() {
 			newPos.X = w.windowStartX + deltaX
 			newPos.Y = w.windowStartY + deltaY
 			w.SetPosition(newPos)
+			w.clampToScreen() // Clamp after setting new position
 		}
 	})
 }
