@@ -1,6 +1,7 @@
 package ebui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"math"
@@ -38,27 +39,33 @@ func NewScrollableContainer(opts ...ComponentOpt) *ScrollableContainer {
 
 func (sc *ScrollableContainer) registerEventListeners() {
 	// Handle mouse wheel events
-	sc.eventDispatcher.AddEventListener(EventMouseWheel, func(e Event) {
-		wheelY := e.Y
+	sc.eventDispatcher.AddEventListener(EventMouseWheel, func(e *Event) {
+		fmt.Println("ScrollableContainer received mouse wheel event")
+		wheelY := e.Data.(*MouseWheelEvent).WheelY
 		sc.scrollOffset.Y -= wheelY * 10
 		sc.clampScrollOffset()
 	})
 
 	// Handle scroll bar dragging
-	sc.eventDispatcher.AddEventListener(EventMouseDown, func(e Event) {
+	sc.eventDispatcher.AddEventListener(EventMouseDown, func(e *Event) {
+		fmt.Println("ScrollableContainer received mouse down event")
 		if sc.isOverScrollBar(e.X, e.Y) {
+			fmt.Println("Starting scroll bar drag")
 			sc.isDraggingThumb = true
 			sc.dragStartY = e.Y
 			sc.dragStartOffset = sc.scrollOffset.Y
 		}
 	})
 
-	sc.eventDispatcher.AddEventListener(EventMouseUp, func(e Event) {
+	sc.eventDispatcher.AddEventListener(EventMouseUp, func(e *Event) {
+		fmt.Println("ScrollableContainer received mouse up event")
 		sc.isDraggingThumb = false
 	})
 
-	sc.eventDispatcher.AddEventListener(EventMouseMove, func(e Event) {
+	sc.eventDispatcher.AddEventListener(EventMouseMove, func(e *Event) {
+		fmt.Println("ScrollableContainer received mouse move event")
 		if sc.isDraggingThumb {
+			fmt.Println("Dragging scroll bar")
 			deltaY := e.Y - sc.dragStartY
 
 			contentSize := sc.layout.GetMinSize(sc)
@@ -128,7 +135,7 @@ func (sc *ScrollableContainer) Contains(x, y float64) bool {
 	return y >= float64(bounds.Min.Y) && y <= float64(bounds.Max.Y)
 }
 
-func (sc *ScrollableContainer) ShouldPropagateEvent(event Event, x, y float64) bool {
+func (sc *ScrollableContainer) IsWithinBounds(x, y float64) bool {
 	return sc.Contains(x, y)
 }
 

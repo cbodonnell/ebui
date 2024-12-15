@@ -184,7 +184,7 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 }
 
 func (w *Window) registerEventListeners() {
-	w.eventDispatcher.AddEventListener(EventMouseDown, func(e Event) {
+	w.eventDispatcher.AddEventListener(EventMouseDown, func(e *Event) {
 		// Always activate window on any mouse down within the window
 		w.manager.SetActiveWindow(w)
 
@@ -199,11 +199,11 @@ func (w *Window) registerEventListeners() {
 		}
 	})
 
-	w.eventDispatcher.AddEventListener(EventMouseUp, func(e Event) {
+	w.eventDispatcher.AddEventListener(EventMouseUp, func(e *Event) {
 		w.isDragging = false
 	})
 
-	w.eventDispatcher.AddEventListener(EventMouseMove, func(e Event) {
+	w.eventDispatcher.AddEventListener(EventMouseMove, func(e *Event) {
 		if w.isDragging {
 			deltaX := e.X - w.dragStartX
 			deltaY := e.Y - w.dragStartY

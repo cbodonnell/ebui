@@ -6,14 +6,14 @@ import (
 
 type InputManager struct {
 	lastMousePressed bool
-	hovered          InteractiveComponent
-	activeScroller   *ScrollableContainer
-	activeWindow     *Window
 	lastX, lastY     float64
+	hovered          []InteractiveComponent
 }
 
 func NewInputManager() *InputManager {
-	return &InputManager{}
+	return &InputManager{
+		hovered: make([]InteractiveComponent, 0),
+	}
 }
 
 // Update handles all input events for the frame
@@ -21,101 +21,101 @@ func (u *InputManager) Update(root Component) {
 	x, y := ebiten.CursorPosition()
 	fx, fy := float64(x), float64(y)
 	mousePressed := ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
+	wheelX, wheelY := ebiten.Wheel()
 
-	// Handle mouse move events for active components
-	if mousePressed {
-		u.handleMouseMove(fx, fy)
+	var events []*Event
+	if !u.lastMousePressed && mousePressed {
+		events = append(events, &Event{Type: EventMouseDown, X: fx, Y: fy})
 	}
-
-	// Handle active component release
 	if u.lastMousePressed && !mousePressed {
-		u.handleMouseRelease(fx, fy)
+		events = append(events, &Event{Type: EventMouseUp, X: fx, Y: fy})
 	}
 
-	// Only handle hover and new mouse press events if we're not dragging anything
-	if u.activeWindow == nil && u.activeScroller == nil {
-		u.handleHoverEvents(fx, fy, root)
-		if mousePressed && !u.lastMousePressed {
-			u.handleMousePress(fx, fy)
-		}
+	if u.lastX != fx || u.lastY != fy {
+		events = append(events, &Event{Type: EventMouseMove, X: fx, Y: fy})
 	}
 
-	u.handleWheelEvents(fx, fy, root)
+	if wheelX != 0 || wheelY != 0 {
+		data := &MouseWheelEvent{WheelX: wheelX, WheelY: wheelY}
+		events = append(events, &Event{Type: EventMouseWheel, X: fx, Y: fy, Data: data})
+	}
+
+	// Find all interactive components at the current mouse position
+	components := u.findInteractiveComponentsAt(root, fx, fy)
+
+	// Emit all events
+	for _, event := range events {
+		u.emitEvent(components, event)
+	}
+
+	// Detect hover changes and emit enter/leave events
+	entered, left := u.detectHoverChanges(components)
+	u.emitEvent(entered, &Event{Type: EventMouseEnter, X: fx, Y: fy})
+	u.emitEvent(left, &Event{Type: EventMouseLeave, X: fx, Y: fy})
 
 	u.lastMousePressed = mousePressed
 	u.lastX, u.lastY = fx, fy
+	u.hovered = components
 }
 
-func (u *InputManager) handleMouseMove(fx, fy float64) {
-	if u.activeWindow != nil {
-		u.activeWindow.HandleEvent(Event{Type: EventMouseMove, X: fx, Y: fy, Component: u.activeWindow})
-	} else if u.activeScroller != nil {
-		u.activeScroller.HandleEvent(Event{Type: EventMouseMove, X: fx, Y: fy, Component: u.activeScroller})
+// detectHoverChanges compares the currently hovered components with the previously hovered
+// components and returns the components that were entered and left.
+func (u *InputManager) detectHoverChanges(currentHovered []InteractiveComponent) (entered, left []InteractiveComponent) {
+	// Track which components were previously hovered but aren't anymore
+	for _, prev := range u.hovered {
+		found := false
+		for _, curr := range currentHovered {
+			if prev == curr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			left = append(left, prev)
+		}
 	}
+
+	// Track which components are newly hovered
+	for _, curr := range currentHovered {
+		found := false
+		for _, prev := range u.hovered {
+			if curr == prev {
+				found = true
+				break
+			}
+		}
+		if !found {
+			entered = append(entered, curr)
+		}
+	}
+
+	return entered, left
 }
 
-func (u *InputManager) handleMouseRelease(fx, fy float64) {
-	if u.activeWindow != nil {
-		u.activeWindow.HandleEvent(Event{Type: EventMouseUp, X: fx, Y: fy, Component: u.activeWindow})
-		u.activeWindow = nil
-	} else if u.activeScroller != nil {
-		u.activeScroller.HandleEvent(Event{Type: EventMouseUp, X: fx, Y: fy, Component: u.activeScroller})
-		u.activeScroller = nil
-	} else if u.hovered != nil {
-		u.hovered.HandleEvent(Event{Type: EventMouseUp, X: fx, Y: fy, Component: u.hovered})
-	}
-}
-
-func (u *InputManager) handleMousePress(fx, fy float64) {
-	if u.hovered == nil {
-		return
-	}
-
-	u.hovered.HandleEvent(Event{Type: EventMouseDown, X: fx, Y: fy, Component: u.hovered})
-
-	// Check if we're starting a window drag
-	if window, ok := u.hovered.(*Window); ok && window.isOverHeader(fx, fy) {
-		u.activeWindow = window
-		return
-	}
-
-	// Check if we're starting a scroll
-	if scrollable, ok := u.hovered.(*ScrollableContainer); ok && scrollable.isOverScrollBar(fx, fy) {
-		u.activeScroller = scrollable
-		return
-	}
-}
-
-func (u *InputManager) handleHoverEvents(fx, fy float64, root Component) {
-	target := findInteractableAt(fx, fy, root)
-	if target == u.hovered {
-		return
-	}
-
-	if u.hovered != nil {
-		u.hovered.HandleEvent(Event{Type: EventMouseLeave, X: fx, Y: fy, Component: u.hovered})
-	}
-	if target != nil {
-		target.HandleEvent(Event{Type: EventMouseEnter, X: fx, Y: fy, Component: target})
-	}
-	u.hovered = target
-}
-
-func (u *InputManager) handleWheelEvents(fx, fy float64, root Component) {
-	wheelX, wheelY := ebiten.Wheel()
-	if scrollable := findScrollableAt(fx, fy, root); scrollable != nil {
-		scrollable.HandleEvent(Event{Type: EventMouseWheel, X: wheelX, Y: wheelY, Component: scrollable})
+func (u *InputManager) emitEvent(components []InteractiveComponent, event *Event) {
+	for _, comp := range components {
+		comp.HandleEvent(event)
+		if event.PropagationStopped() {
+			break
+		}
 	}
 }
 
-// findComponentAt is a generic component finder
-func findComponentAt[T any](x, y float64, c Component, check func(Component) (T, bool)) (T, bool) {
-	var zero T
+// findInteractiveComponentsAt returns a stack of components that are interactive
+// and are at the given coordinates. The stack is ordered from topmost to bottommost.
+func (m *InputManager) findInteractiveComponentsAt(root Component, x, y float64) []InteractiveComponent {
+	stack := make([]InteractiveComponent, 0)
+	m.buildInteractiveStack(root, x, y, &stack)
+	return stack
+}
 
-	// Check if component controls its own event boundary
+// TODO: should this be event-specific?
+func (m *InputManager) buildInteractiveStack(c Component, x, y float64, stack *[]InteractiveComponent) {
+	// Check if component has an event boundary
 	if boundary, ok := c.(EventBoundary); ok {
-		if !boundary.ShouldPropagateEvent(Event{}, x, y) {
-			return zero, false
+		if !boundary.IsWithinBounds(x, y) {
+			// Stop checking this component and its children
+			return
 		}
 	}
 
@@ -123,38 +123,12 @@ func findComponentAt[T any](x, y float64, c Component, check func(Component) (T,
 	if container, ok := c.(Container); ok {
 		children := container.GetChildren()
 		for i := len(children) - 1; i >= 0; i-- {
-			if found, ok := findComponentAt(x, y, children[i], check); ok {
-				return found, true
-			}
+			m.buildInteractiveStack(children[i], x, y, stack)
 		}
 	}
 
 	// Finally check this component itself
-	if !c.Contains(x, y) {
-		return zero, false
+	if interactive, ok := c.(InteractiveComponent); ok && c.Contains(x, y) {
+		*stack = append(*stack, interactive)
 	}
-
-	return check(c)
-}
-
-// findInteractableAt finds the topmost interactive component at the given coordinates
-func findInteractableAt(x, y float64, c Component) InteractiveComponent {
-	found, _ := findComponentAt(x, y, c, func(c Component) (InteractiveComponent, bool) {
-		if i, ok := c.(InteractiveComponent); ok {
-			return i, true
-		}
-		return nil, false
-	})
-	return found
-}
-
-// findScrollableAt finds the topmost scrollable container at the given coordinates
-func findScrollableAt(x, y float64, c Component) *ScrollableContainer {
-	found, _ := findComponentAt(x, y, c, func(c Component) (*ScrollableContainer, bool) {
-		if s, ok := c.(*ScrollableContainer); ok {
-			return s, true
-		}
-		return nil, false
-	})
-	return found
 }

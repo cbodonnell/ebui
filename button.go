@@ -20,6 +20,7 @@ type Button struct {
 	colors    ButtonColors
 	isHovered bool
 	isPressed bool
+	onClick   func()
 }
 
 type ButtonColors struct {
@@ -52,10 +53,10 @@ func WithFont(font font.Face) ComponentOpt {
 	}
 }
 
-func WithClickHandler(handler EventHandler) ComponentOpt {
+func WithClickHandler(handler func()) ComponentOpt {
 	return func(c Component) {
 		if b, ok := c.(*Button); ok {
-			b.eventDispatcher.AddEventListener(EventClick, handler)
+			b.onClick = handler
 		}
 	}
 }
@@ -79,6 +80,7 @@ func NewButton(opts ...ComponentOpt) *Button {
 			Hovered: color.RGBA{220, 220, 220, 255},
 			Pressed: color.RGBA{170, 170, 170, 255},
 		},
+		onClick: func() {}, // Default click handler
 	}
 
 	for _, opt := range opts {
@@ -91,27 +93,22 @@ func NewButton(opts ...ComponentOpt) *Button {
 }
 
 func (b *Button) registerEventListeners() {
-	b.eventDispatcher.AddEventListener(EventMouseEnter, func(e Event) {
+	b.eventDispatcher.AddEventListener(EventMouseEnter, func(e *Event) {
 		b.isHovered = true
 	})
 
-	b.eventDispatcher.AddEventListener(EventMouseLeave, func(e Event) {
+	b.eventDispatcher.AddEventListener(EventMouseLeave, func(e *Event) {
 		b.isHovered = false
 		b.isPressed = false
 	})
 
-	b.eventDispatcher.AddEventListener(EventMouseDown, func(e Event) {
+	b.eventDispatcher.AddEventListener(EventMouseDown, func(e *Event) {
 		b.isPressed = true
 	})
 
-	b.eventDispatcher.AddEventListener(EventMouseUp, func(e Event) {
+	b.eventDispatcher.AddEventListener(EventMouseUp, func(e *Event) {
 		if b.isPressed && b.isHovered {
-			b.eventDispatcher.DispatchEvent(Event{
-				Type:      EventClick,
-				X:         e.X,
-				Y:         e.Y,
-				Component: b,
-			})
+			b.onClick()
 		}
 		b.isPressed = false
 	})

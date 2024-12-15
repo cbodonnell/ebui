@@ -47,13 +47,13 @@ func NewGame() *Game {
 	addBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("Add Task"),
-		ebui.WithClickHandler(func(e ebui.Event) { game.addItem() }),
+		ebui.WithClickHandler(func() { game.addItem() }),
 	)
 
 	addMultiBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("Add 5 Tasks"),
-		ebui.WithClickHandler(func(e ebui.Event) {
+		ebui.WithClickHandler(func() {
 			for i := 0; i < 5; i++ {
 				game.addItem()
 			}
@@ -63,14 +63,14 @@ func NewGame() *Game {
 	clearBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("Clear Tasks"),
-		ebui.WithClickHandler(func(e ebui.Event) { game.clearItems() }),
+		ebui.WithClickHandler(func() { game.clearItems() }),
 	)
 
 	// Window management buttons
 	newWindowBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("New Window"),
-		ebui.WithClickHandler(func(e ebui.Event) { game.createRandomWindow() }),
+		ebui.WithClickHandler(func() { game.createRandomWindow() }),
 	)
 
 	header.AddChild(addBtn)
@@ -146,9 +146,8 @@ func (g *Game) createStatsWindow() {
 	updateStatsBtn := ebui.NewButton(
 		ebui.WithSize(230, 40),
 		ebui.WithLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren()))),
-		ebui.WithClickHandler(func(e ebui.Event) {
-			b := e.Component.(*ebui.Button)
-			b.SetLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren())))
+		ebui.WithClickHandler(func() {
+			fmt.Println("Updating stats...")
 		}),
 	)
 
@@ -226,19 +225,8 @@ func (g *Game) addItem() {
 	statusBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel(status),
-		ebui.WithClickHandler(func(e ebui.Event) {
-			b := e.Component.(*ebui.Button)
-			currentStatus := b.GetLabel()
-			var newStatus string
-			switch currentStatus {
-			case "New":
-				newStatus = "In Progress"
-			case "In Progress":
-				newStatus = "Done"
-			case "Done":
-				newStatus = "New"
-			}
-			b.SetLabel(newStatus)
+		ebui.WithClickHandler(func() {
+			fmt.Println("Status button clicked!")
 		}),
 	)
 
@@ -247,7 +235,7 @@ func (g *Game) addItem() {
 		ebui.WithSize(100, 40),
 		ebui.WithLabel("Delete"),
 		ebui.WithBackground(color.RGBA{255, 192, 192, 255}), // Light red
-		ebui.WithClickHandler(func(e ebui.Event) {
+		ebui.WithClickHandler(func() {
 			g.scrollable.RemoveChild(row)
 		}),
 	)

@@ -5,29 +5,42 @@ type EventType int
 
 const (
 	EventMouseMove EventType = iota
+	EventMouseDrag
 	EventMouseDown
 	EventMouseUp
 	EventMouseEnter
 	EventMouseLeave
-	EventClick
 	EventMouseWheel
 )
 
 // Event represents a UI event
 type Event struct {
-	Type      EventType
-	X, Y      float64
-	Component Component
+	Type            EventType
+	X, Y            float64 // Mouse position
+	Data            interface{}
+	stopPropagation bool
+}
+
+// MouseWheelEvent is event data for mouse wheel events
+type MouseWheelEvent struct {
+	WheelX, WheelY float64
+}
+
+func (e *Event) StopPropagation() {
+	e.stopPropagation = true
+}
+
+func (e *Event) PropagationStopped() bool {
+	return e.stopPropagation
 }
 
 // EventBoundary represents a component that controls event propagation
 type EventBoundary interface {
-	// Returns true if the event should propagate to children
-	ShouldPropagateEvent(event Event, x, y float64) bool
+	IsWithinBounds(x, y float64) bool
 }
 
 // EventHandler is a function that handles events
-type EventHandler func(event Event)
+type EventHandler func(event *Event)
 
 // EventDispatcher manages event subscriptions and dispatching
 type EventDispatcher struct {
@@ -54,7 +67,7 @@ func (ed *EventDispatcher) RemoveEventListener(eventType EventType, handler Even
 	}
 }
 
-func (ed *EventDispatcher) DispatchEvent(event Event) {
+func (ed *EventDispatcher) DispatchEvent(event *Event) {
 	for _, handler := range ed.handlers[event.Type] {
 		handler(event)
 	}

@@ -2,16 +2,16 @@ package ebui
 
 // Interactive is an interface that can receive input events
 type Interactive interface {
-	HandleEvent(event Event)
-	GetEventDispatcher() *EventDispatcher
+	HandleEvent(event *Event)
 }
 
+// InteractiveComponent is an interface that combines the Component and Interactive interfaces
 type InteractiveComponent interface {
 	Component
 	Interactive
 }
 
-// BaseInteractive provides common interactive functionality
+// BaseInteractive is a base struct that implements the Interactive interface
 type BaseInteractive struct {
 	eventDispatcher *EventDispatcher
 }
@@ -22,10 +22,6 @@ func NewBaseInteractive() *BaseInteractive {
 	}
 }
 
-func (bi *BaseInteractive) HandleEvent(event Event) {
+func (bi *BaseInteractive) HandleEvent(event *Event) {
 	bi.eventDispatcher.DispatchEvent(event)
-}
-
-func (bi *BaseInteractive) GetEventDispatcher() *EventDispatcher {
-	return bi.eventDispatcher
 }
