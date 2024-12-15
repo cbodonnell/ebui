@@ -179,9 +179,8 @@ func (g *Game) createRandomWindow() {
 	)
 
 	content := ebui.NewLayoutContainer(
-		ebui.WithSize(window.GetSize().Width, window.GetSize().Height-30), // Subtract header height
-		ebui.WithPadding(10, 10, 10, 10),
-		ebui.WithLayout(ebui.NewVerticalStackLayout(10, ebui.AlignStart)),
+		ebui.WithSize(window.GetSize().Width-20, 40), // subtract window content padding
+		ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignCenter)),
 	)
 
 	btn := ebui.NewButton(
