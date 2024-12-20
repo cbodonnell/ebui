@@ -38,41 +38,57 @@ func (im *InputManager) buildEventPath(target InteractiveComponent) []Interactiv
 	return path
 }
 
-// findInteractiveComponentAt recursively searches for an interactive component at the given coordinates.
+func findInteractiveComponentAt(root Component, x, y float64) InteractiveComponent {
+	if component, ok := findComponentAt[InteractiveComponent](root, x, y); ok {
+		return component
+	}
+	return nil
+}
+
+func findScrollableContainerAt(root Component, x, y float64) InteractiveComponent {
+	if component, ok := findComponentAt[*ScrollableContainer](root, x, y); ok {
+		return component
+	}
+	return nil
+}
+
+// findComponentAt recursively searches for an component of a given type at the given coordinates.
 // It traverses the component hierarchy in reverse order to find the topmost component first.
 // If an event boundary is encountered, it will stop the search and return nil.
-func (im *InputManager) findInteractiveComponentAt(element Component, x, y float64) InteractiveComponent {
-	if element == nil {
-		return nil
+func findComponentAt[T Component](root Component, x, y float64) (T, bool) {
+	var zero T
+
+	if root == nil {
+		return zero, false
 	}
 
-	// Check if this element is an event boundary
-	if eb, ok := element.(EventBoundary); ok && !eb.IsWithinBounds(x, y) {
-		return nil
+	// Check if this component is an event boundary
+	if eb, ok := root.(EventBoundary); ok && !eb.IsWithinBounds(x, y) {
+		return zero, false
 	}
 
 	// Check children first (reverse order to get topmost first)
-	if container, ok := element.(Container); ok {
+	if container, ok := root.(Container); ok {
 		children := container.GetChildren()
 		for i := len(children) - 1; i >= 0; i-- {
-			if hit := im.findInteractiveComponentAt(children[i], x, y); hit != nil {
-				return hit
+			if component, ok := findComponentAt[T](children[i], x, y); ok {
+				return component, true
 			}
 		}
 	}
 
-	// Check if this element is interactive
-	interactive, ok := element.(InteractiveComponent)
+	// Check if this component is of the desired type
+	component, ok := root.(T)
 	if !ok {
-		return nil
+		return zero, false
 	}
 
-	// Only check this element's bounds after checking all children
-	if element.Contains(x, y) {
-		return interactive
+	// Check if the point is within the component's bounds
+	if !root.Contains(x, y) {
+		return zero, false
 	}
 
-	return nil
+	return component, true
 }
 
 // dispatchEvent dispatches the given event to the target component and its ancestors.
@@ -112,16 +128,17 @@ func (im *InputManager) dispatchEvent(event *Event) bool {
 func (im *InputManager) Update(root Component) {
 	currentTime := time.Now().UnixNano()
 	x, y := ebiten.CursorPosition()
+	fx, fy := float64(x), float64(y)
 
-	deltaX := float64(x) - im.lastMouseX
-	deltaY := float64(y) - im.lastMouseY
+	deltaX := fx - im.lastMouseX
+	deltaY := fy - im.lastMouseY
 
-	target := im.findInteractiveComponentAt(root, float64(x), float64(y))
+	target := findInteractiveComponentAt(root, fx, fy)
 
 	// Base event properties
 	baseEvent := Event{
-		MouseX:      float64(x),
-		MouseY:      float64(y),
+		MouseX:      fx,
+		MouseY:      fy,
 		MouseDeltaX: deltaX,
 		MouseDeltaY: deltaY,
 		Timestamp:   currentTime,
@@ -153,13 +170,12 @@ func (im *InputManager) Update(root Component) {
 		}
 	}
 
-	// TODO: hovering over buttons in scrollable makes the wheel scroll not work
 	// Handle wheel
 	wheelX, wheelY := ebiten.Wheel()
 	if wheelX != 0 || wheelY != 0 {
 		wheelEvent := baseEvent
 		wheelEvent.Type = Wheel
-		wheelEvent.Target = target
+		wheelEvent.Target = findScrollableContainerAt(root, fx, fy)
 		wheelEvent.WheelDeltaX = float64(wheelX)
 		wheelEvent.WheelDeltaY = float64(wheelY)
 		im.dispatchEvent(&wheelEvent)
@@ -237,7 +253,7 @@ func (im *InputManager) Update(root Component) {
 		im.dragSource = nil
 	}
 
-	im.lastMouseX = float64(x)
-	im.lastMouseY = float64(y)
+	im.lastMouseX = fx
+	im.lastMouseY = fy
 	im.lastUpdateTime = currentTime
 }

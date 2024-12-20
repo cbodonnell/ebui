@@ -72,6 +72,7 @@ func NewButton(opts ...ComponentOpt) *Button {
 			Hovered: color.RGBA{220, 220, 220, 255},
 			Pressed: color.RGBA{170, 170, 170, 255},
 		},
+		onClick: func() {}, // Default click handler
 	}
 
 	for _, opt := range opts {
