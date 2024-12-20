@@ -47,31 +47,31 @@ func NewGame() *Game {
 	addBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("Add Task"),
-		ebui.WithClickHandler(func(e ebui.Event) { game.addItem() }),
 	)
+	addBtn.SetClickHandler(func() { game.addItem() })
 
 	addMultiBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("Add 5 Tasks"),
-		ebui.WithClickHandler(func(e ebui.Event) {
-			for i := 0; i < 5; i++ {
-				game.addItem()
-			}
-		}),
 	)
+	addMultiBtn.SetClickHandler(func() {
+		for i := 0; i < 5; i++ {
+			game.addItem()
+		}
+	})
 
 	clearBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("Clear Tasks"),
-		ebui.WithClickHandler(func(e ebui.Event) { game.clearItems() }),
 	)
+	clearBtn.SetClickHandler(func() { game.clearItems() })
 
 	// Window management buttons
 	newWindowBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel("New Window"),
-		ebui.WithClickHandler(func(e ebui.Event) { game.createRandomWindow() }),
 	)
+	newWindowBtn.SetClickHandler(func() { game.createRandomWindow() })
 
 	header.AddChild(addBtn)
 	header.AddChild(addMultiBtn)
@@ -146,11 +146,10 @@ func (g *Game) createStatsWindow() {
 	updateStatsBtn := ebui.NewButton(
 		ebui.WithSize(230, 40),
 		ebui.WithLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren()))),
-		ebui.WithClickHandler(func(e ebui.Event) {
-			b := e.Component.(*ebui.Button)
-			b.SetLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren())))
-		}),
 	)
+	updateStatsBtn.SetClickHandler(func() {
+		updateStatsBtn.SetLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren())))
+	})
 
 	window.AddChild(updateStatsBtn)
 }
@@ -226,31 +225,30 @@ func (g *Game) addItem() {
 	statusBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
 		ebui.WithLabel(status),
-		ebui.WithClickHandler(func(e ebui.Event) {
-			b := e.Component.(*ebui.Button)
-			currentStatus := b.GetLabel()
-			var newStatus string
-			switch currentStatus {
-			case "New":
-				newStatus = "In Progress"
-			case "In Progress":
-				newStatus = "Done"
-			case "Done":
-				newStatus = "New"
-			}
-			b.SetLabel(newStatus)
-		}),
 	)
+	statusBtn.SetClickHandler(func() {
+		currentStatus := statusBtn.GetLabel()
+		var newStatus string
+		switch currentStatus {
+		case "New":
+			newStatus = "In Progress"
+		case "In Progress":
+			newStatus = "Done"
+		case "Done":
+			newStatus = "New"
+		}
+		statusBtn.SetLabel(newStatus)
+	})
 
 	// Delete button
 	deleteBtn := ebui.NewButton(
 		ebui.WithSize(100, 40),
 		ebui.WithLabel("Delete"),
 		ebui.WithBackground(color.RGBA{255, 192, 192, 255}), // Light red
-		ebui.WithClickHandler(func(e ebui.Event) {
-			g.scrollable.RemoveChild(row)
-		}),
 	)
+	deleteBtn.SetClickHandler(func() {
+		g.scrollable.RemoveChild(row)
+	})
 
 	// Add all elements to row
 	row.AddChild(idLabel)

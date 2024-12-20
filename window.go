@@ -184,29 +184,29 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 }
 
 func (w *Window) registerEventListeners() {
-	w.eventDispatcher.AddEventListener(EventMouseDown, func(e Event) {
+	w.eventDispatcher.AddEventListener(DragStart, func(e *Event) {
 		// Always activate window on any mouse down within the window
 		w.manager.SetActiveWindow(w)
 
 		// Start dragging only if over header
-		if w.isOverHeader(e.X, e.Y) {
+		if w.isOverHeader(e.MouseX, e.MouseY) {
 			w.isDragging = true
-			w.dragStartX = e.X
-			w.dragStartY = e.Y
+			w.dragStartX = e.MouseX
+			w.dragStartY = e.MouseY
 			absPos := w.GetAbsolutePosition()
 			w.windowStartX = absPos.X
 			w.windowStartY = absPos.Y
 		}
 	})
 
-	w.eventDispatcher.AddEventListener(EventMouseUp, func(e Event) {
+	w.eventDispatcher.AddEventListener(DragEnd, func(e *Event) {
 		w.isDragging = false
 	})
 
-	w.eventDispatcher.AddEventListener(EventMouseMove, func(e Event) {
+	w.eventDispatcher.AddEventListener(Drag, func(e *Event) {
 		if w.isDragging {
-			deltaX := e.X - w.dragStartX
-			deltaY := e.Y - w.dragStartY
+			deltaX := e.MouseX - w.dragStartX
+			deltaY := e.MouseY - w.dragStartY
 			newPos := w.GetPosition()
 			newPos.X = w.windowStartX + deltaX
 			newPos.Y = w.windowStartY + deltaY

@@ -1,33 +1,80 @@
 package ebui
 
-// EventType represents different types of UI events
-type EventType int
+import "github.com/hajimehoshi/ebiten/v2"
+
+type EventType string
 
 const (
-	EventMouseMove EventType = iota
-	EventMouseDown
-	EventMouseUp
-	EventMouseEnter
-	EventMouseLeave
-	EventClick
-	EventMouseWheel
+	MouseDown  EventType = "mousedown"
+	MouseUp    EventType = "mouseup"
+	MouseMove  EventType = "mousemove"
+	MouseEnter EventType = "mouseenter"
+	MouseLeave EventType = "mouseleave"
+	Wheel      EventType = "wheel"
+	DragStart  EventType = "dragstart"
+	Drag       EventType = "drag"
+	DragOver   EventType = "dragover"
+	DragEnd    EventType = "dragend"
+	Drop       EventType = "drop"
 )
 
-// Event represents a UI event
+type EventPhase int
+
+const (
+	PhaseNone    EventPhase = 0
+	PhaseCapture EventPhase = 1
+	PhaseTarget  EventPhase = 2
+	PhaseBubble  EventPhase = 3
+)
+
 type Event struct {
-	Type      EventType
-	X, Y      float64
-	Component Component
+	Type                     EventType
+	Target                   InteractiveComponent
+	CurrentTarget            InteractiveComponent
+	RelatedTarget            InteractiveComponent
+	MouseX, MouseY           float64
+	MouseDeltaX, MouseDeltaY float64
+	WheelDeltaX, WheelDeltaY float64
+	MouseButton              ebiten.MouseButton
+	Timestamp                int64
+	Bubbles                  bool
+	Phase                    EventPhase
+	Path                     []InteractiveComponent
 }
 
 // EventBoundary represents a component that controls event propagation
 type EventBoundary interface {
-	// Returns true if the event should propagate to children
-	ShouldPropagateEvent(event Event, x, y float64) bool
+	IsWithinBounds(x, y float64) bool
+}
+
+// Interactive is an interface that can receive input events
+type Interactive interface {
+	HandleEvent(event *Event)
+}
+
+// InteractiveComponent is an interface that combines the Component and Interactive interfaces
+type InteractiveComponent interface {
+	Component
+	Interactive
+}
+
+// BaseInteractive is a base struct that implements the Interactive interface
+type BaseInteractive struct {
+	eventDispatcher *EventDispatcher
+}
+
+func NewBaseInteractive() *BaseInteractive {
+	return &BaseInteractive{
+		eventDispatcher: NewEventDispatcher(),
+	}
+}
+
+func (bi *BaseInteractive) HandleEvent(event *Event) {
+	bi.eventDispatcher.DispatchEvent(event)
 }
 
 // EventHandler is a function that handles events
-type EventHandler func(event Event)
+type EventHandler func(event *Event)
 
 // EventDispatcher manages event subscriptions and dispatching
 type EventDispatcher struct {
@@ -54,7 +101,7 @@ func (ed *EventDispatcher) RemoveEventListener(eventType EventType, handler Even
 	}
 }
 
-func (ed *EventDispatcher) DispatchEvent(event Event) {
+func (ed *EventDispatcher) DispatchEvent(event *Event) {
 	for _, handler := range ed.handlers[event.Type] {
 		handler(event)
 	}
