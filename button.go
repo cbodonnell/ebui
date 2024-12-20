@@ -45,7 +45,7 @@ func WithTextColor(color color.Color) ComponentOpt {
 	}
 }
 
-func WithFont(font font.Face) ComponentOpt {
+func WithLabelFont(font font.Face) ComponentOpt {
 	return func(c Component) {
 		if b, ok := c.(*Button); ok {
 			b.font = font
@@ -136,11 +136,14 @@ func (b Button) draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X, pos.Y)
 
-	bgColor := b.colors.Default
-	if b.isPressed {
+	var bgColor color.Color
+	switch {
+	case b.isPressed:
 		bgColor = b.colors.Pressed
-	} else if b.isHovered {
+	case b.isHovered:
 		bgColor = b.colors.Hovered
+	default:
+		bgColor = b.colors.Default
 	}
 
 	buttonImage := ebiten.NewImage(int(size.Width), int(size.Height))

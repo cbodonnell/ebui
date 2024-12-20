@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image/color"
 	"log"
@@ -20,7 +21,6 @@ type Game struct {
 }
 
 func NewGame() *Game {
-	// ebui.Debug = true
 	game := &Game{nextID: 1}
 
 	// Create root container
@@ -94,8 +94,8 @@ func NewGame() *Game {
 	game.windows = ebui.NewWindowManager()
 
 	// Create initial windows
-	game.createInfoWindow()
 	game.createStatsWindow()
+	game.createInfoWindow()
 
 	// Add everything to root
 	root.AddChild(vstack)
@@ -117,21 +117,16 @@ func (g *Game) createInfoWindow() {
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{100, 149, 237, 255}, // Cornflower blue
+			Border:     color.RGBA{100, 149, 237, 255},
 		}),
 	)
 
-	infoBtn := ebui.NewButton(
-		ebui.WithSize(280, 40),
-		ebui.WithLabel("EBUI Demo Application"),
+	infoLbl := ebui.NewLabel(
+		"Try dragging this window!",
+		ebui.WithSize(300, 40),
 	)
 
-	descBtn := ebui.NewButton(
-		ebui.WithSize(280, 40),
-		ebui.WithLabel("Try dragging this window!"),
-	)
-
-	window.AddChild(infoBtn)
-	window.AddChild(descBtn)
+	window.AddChild(infoLbl)
 }
 
 func (g *Game) createStatsWindow() {
@@ -140,11 +135,12 @@ func (g *Game) createStatsWindow() {
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{46, 139, 87, 255},
+			Border:     color.RGBA{46, 139, 87, 255},
 		}),
 	)
 
 	updateStatsBtn := ebui.NewButton(
-		ebui.WithSize(230, 40),
+		ebui.WithSize(250, 40),
 		ebui.WithLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren()))),
 	)
 	updateStatsBtn.SetClickHandler(func() {
@@ -160,10 +156,12 @@ func (g *Game) createRandomWindow() {
 		{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{218, 112, 214, 255}, // Orchid
+			Border:     color.RGBA{218, 112, 214, 255},
 		},
 		{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{210, 105, 30, 255}, // Chocolate
+			Border:     color.RGBA{210, 105, 30, 255},
 		},
 	}
 
@@ -177,17 +175,20 @@ func (g *Game) createRandomWindow() {
 		ebui.WithWindowColors(colorScheme),
 	)
 
-	content := ebui.NewLayoutContainer(
-		ebui.WithSize(window.GetSize().Width-20, 40), // subtract window content padding
-		ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignCenter)),
+	content := ebui.NewScrollableContainer(
+		ebui.WithSize(window.GetSize().Width, window.GetSize().Height-30), // Subtract header height
+		ebui.WithPadding(0, 4, 0, 4),
+		ebui.WithLayout(ebui.NewVerticalStackLayout(0, ebui.AlignStart)),
 	)
 
-	btn := ebui.NewButton(
-		ebui.WithSize(content.GetSize().Width-20, 40),
-		ebui.WithLabel("Sample Content"),
-	)
+	for i := 0; i < 20; i++ {
+		lbl := ebui.NewLabel(
+			fmt.Sprintf("Item %d", i),
+			ebui.WithSize(60, 20),
+		)
+		content.AddChild(lbl)
+	}
 
-	content.AddChild(btn)
 	window.AddChild(content)
 }
 
@@ -282,6 +283,12 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func main() {
 	ebiten.SetWindowSize(800, 600)
 	ebiten.SetWindowTitle("EBUI Framework Demo")
+
+	debug := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+	if *debug {
+		ebui.Debug = true
+	}
 
 	if err := ebiten.RunGame(NewGame()); err != nil {
 		log.Fatal(err)
