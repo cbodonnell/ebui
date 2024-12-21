@@ -75,6 +75,14 @@ func (b *Label) SetText(text string) {
 	b.text = text
 }
 
+func (b *Label) GetColor() color.Color {
+	return b.color
+}
+
+func (b *Label) SetColor(color color.Color) {
+	b.color = color
+}
+
 func (b *Label) Draw(screen *ebiten.Image) {
 	if !b.size.IsDrawable() {
 		panic("Label must have a size")

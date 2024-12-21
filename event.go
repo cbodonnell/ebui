@@ -52,6 +52,7 @@ type EventBoundary interface {
 // Interactive is an interface that can receive input events
 type Interactive interface {
 	HandleEvent(event *Event)
+	AddEventListener(eventType EventType, handler EventHandler)
 }
 
 // InteractiveComponent is an interface that combines the Component and Interactive interfaces
@@ -73,6 +74,10 @@ func NewBaseInteractive() *BaseInteractive {
 
 func (bi *BaseInteractive) HandleEvent(event *Event) {
 	bi.eventDispatcher.DispatchEvent(event)
+}
+
+func (bi *BaseInteractive) AddEventListener(eventType EventType, handler EventHandler) {
+	bi.eventDispatcher.AddEventListener(eventType, handler)
 }
 
 // EventHandler is a function that handles events

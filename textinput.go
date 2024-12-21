@@ -140,7 +140,7 @@ func NewTextInput(opts ...ComponentOpt) *TextInput {
 }
 
 func (t *TextInput) registerEventListeners() {
-	t.eventDispatcher.AddEventListener(MouseDown, func(e *Event) {
+	t.AddEventListener(MouseDown, func(e *Event) {
 		t.Focus()
 
 		// Calculate cursor position from click, accounting for scroll
@@ -150,7 +150,7 @@ func (t *TextInput) registerEventListeners() {
 		t.selectionEnd = t.cursorPos
 	})
 
-	t.eventDispatcher.AddEventListener(MouseUp, func(e *Event) {
+	t.AddEventListener(MouseUp, func(e *Event) {
 		if t.isFocused {
 			clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
 			endPos := t.getCharIndexAtX(clickX)
@@ -162,7 +162,7 @@ func (t *TextInput) registerEventListeners() {
 		}
 	})
 
-	t.eventDispatcher.AddEventListener(Drag, func(e *Event) {
+	t.AddEventListener(Drag, func(e *Event) {
 		if t.isFocused {
 			clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
 			t.selectionEnd = t.getCharIndexAtX(clickX)
@@ -171,11 +171,11 @@ func (t *TextInput) registerEventListeners() {
 		}
 	})
 
-	t.eventDispatcher.AddEventListener(Focus, func(e *Event) {
+	t.AddEventListener(Focus, func(e *Event) {
 		t.Focus()
 	})
 
-	t.eventDispatcher.AddEventListener(Blur, func(e *Event) {
+	t.AddEventListener(Blur, func(e *Event) {
 		t.Blur()
 	})
 }
