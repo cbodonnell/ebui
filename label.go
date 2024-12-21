@@ -13,10 +13,19 @@ var _ Component = &Label{}
 
 type Label struct {
 	*BaseComponent
-	text  string
-	color color.Color
-	font  font.Face
+	text    string
+	justify Justify
+	color   color.Color
+	font    font.Face
 }
+
+type Justify int
+
+const (
+	JustifyLeft Justify = iota
+	JustifyCenter
+	JustifyRight
+)
 
 func WithColor(color color.Color) ComponentOpt {
 	return func(c Component) {
@@ -34,12 +43,21 @@ func WithFont(font font.Face) ComponentOpt {
 	}
 }
 
+func WithJustify(justify Justify) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Label); ok {
+			b.justify = justify
+		}
+	}
+}
+
 func NewLabel(text string, opts ...ComponentOpt) *Label {
 	b := &Label{
 		BaseComponent: NewBaseComponent(opts...),
 		text:          text,
 		color:         color.Black,        // Default text color
 		font:          basicfont.Face7x13, // Default font
+		justify:       JustifyCenter,      // Default text justification
 	}
 
 	for _, opt := range opts {
@@ -76,7 +94,15 @@ func (b Label) draw(screen *ebiten.Image) {
 	bounds, _ := font.BoundString(b.font, b.text)
 	textWidth := (bounds.Max.X - bounds.Min.X).Ceil()
 	textHeight := (bounds.Max.Y - bounds.Min.Y).Ceil()
-	textX := pos.X + padding.Left + (size.Width-float64(textWidth))/2
+	var textX float64
+	switch b.justify {
+	case JustifyLeft:
+		textX = pos.X + padding.Left
+	case JustifyCenter:
+		textX = pos.X + padding.Left + (size.Width-float64(textWidth))/2
+	case JustifyRight:
+		textX = pos.X + size.Width - padding.Right - float64(textWidth)
+	}
 	textY := pos.Y + padding.Top + (size.Height-float64(textHeight))/2 + float64(textHeight)
 	text.Draw(screen, b.text, b.font, int(textX), int(textY), b.color)
 }

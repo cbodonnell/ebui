@@ -185,6 +185,7 @@ func (g *Game) createRandomWindow() {
 		lbl := ebui.NewLabel(
 			fmt.Sprintf("Item %d", i),
 			ebui.WithSize(60, 20),
+			ebui.WithJustify(ebui.JustifyLeft),
 		)
 		content.AddChild(lbl)
 	}
