@@ -7,13 +7,14 @@ import (
 )
 
 type InputManager struct {
-	lastHoverTarget InteractiveComponent
-	dragSource      InteractiveComponent
-	isDragging      bool
-	lastMouseX      float64
-	lastMouseY      float64
-	lastUpdateTime  int64
-	buttonStates    map[ebiten.MouseButton]bool
+	lastHoverTarget  InteractiveComponent
+	dragSource       InteractiveComponent
+	focusedComponent InteractiveComponent
+	isDragging       bool
+	lastMouseX       float64
+	lastMouseY       float64
+	lastUpdateTime   int64
+	buttonStates     map[ebiten.MouseButton]bool
 }
 
 func NewInputManager() *InputManager {
@@ -150,6 +151,31 @@ func (im *InputManager) Update(root Component) {
 
 			if isPressed {
 				evt.Type = MouseDown
+
+				// Handle focus change on left click
+				if btn == ebiten.MouseButtonLeft {
+					if target != im.focusedComponent {
+						// Send blur event if there was a focused component
+						if im.focusedComponent != nil {
+							blurEvt := baseEvent
+							blurEvt.Type = Blur
+							blurEvt.Target = im.focusedComponent
+							blurEvt.RelatedTarget = target
+							im.dispatchEvent(&blurEvt)
+						}
+
+						// Send focus event to new target
+						if target != nil {
+							focusEvt := baseEvent
+							focusEvt.Type = Focus
+							focusEvt.Target = target
+							focusEvt.RelatedTarget = im.focusedComponent
+							im.dispatchEvent(&focusEvt)
+						}
+
+						im.focusedComponent = target
+					}
+				}
 			} else {
 				evt.Type = MouseUp
 			}

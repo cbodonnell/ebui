@@ -72,20 +72,20 @@ func NewButton(opts ...ComponentOpt) *Button {
 }
 
 func (b *Button) registerEventListeners() {
-	b.eventDispatcher.AddEventListener(MouseEnter, func(e *Event) {
+	b.AddEventListener(MouseEnter, func(e *Event) {
 		b.isHovered = true
 	})
 
-	b.eventDispatcher.AddEventListener(MouseLeave, func(e *Event) {
+	b.AddEventListener(MouseLeave, func(e *Event) {
 		b.isHovered = false
 		b.isPressed = false
 	})
 
-	b.eventDispatcher.AddEventListener(MouseDown, func(e *Event) {
+	b.AddEventListener(MouseDown, func(e *Event) {
 		b.isPressed = true
 	})
 
-	b.eventDispatcher.AddEventListener(MouseUp, func(e *Event) {
+	b.AddEventListener(MouseUp, func(e *Event) {
 		if b.isPressed && b.isHovered {
 			b.onClick()
 		}

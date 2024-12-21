@@ -38,14 +38,14 @@ func NewScrollableContainer(opts ...ComponentOpt) *ScrollableContainer {
 
 func (sc *ScrollableContainer) registerEventListeners() {
 	// Handle mouse wheel events
-	sc.eventDispatcher.AddEventListener(Wheel, func(e *Event) {
+	sc.AddEventListener(Wheel, func(e *Event) {
 		wheelY := e.WheelDeltaY
 		sc.scrollOffset.Y -= wheelY * 10
 		sc.clampScrollOffset()
 	})
 
 	// Handle scroll bar dragging
-	sc.eventDispatcher.AddEventListener(DragStart, func(e *Event) {
+	sc.AddEventListener(DragStart, func(e *Event) {
 		if sc.isOverScrollBar(e.MouseX, e.MouseY) {
 			sc.isDraggingThumb = true
 			sc.dragStartY = e.MouseY
@@ -53,11 +53,11 @@ func (sc *ScrollableContainer) registerEventListeners() {
 		}
 	})
 
-	sc.eventDispatcher.AddEventListener(DragEnd, func(e *Event) {
+	sc.AddEventListener(DragEnd, func(e *Event) {
 		sc.isDraggingThumb = false
 	})
 
-	sc.eventDispatcher.AddEventListener(Drag, func(e *Event) {
+	sc.AddEventListener(Drag, func(e *Event) {
 		if sc.isDraggingThumb {
 			deltaY := e.MouseY - sc.dragStartY
 			contentSize := sc.layout.GetMinSize(sc)
