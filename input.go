@@ -23,56 +23,46 @@ func NewInputManager() *InputManager {
 	}
 }
 
-// buildEventPath constructs the event path for a given target component.
-// It traverses the component hierarchy from the target to the root, collecting
-// all interactive components along the way.
-func (im *InputManager) buildEventPath(target InteractiveComponent) []InteractiveComponent {
-	path := []InteractiveComponent{}
-	var current Component = target
-	for current != nil {
-		if interactive, ok := current.(InteractiveComponent); ok {
-			path = append([]InteractiveComponent{interactive}, path...)
-		}
-		current = current.GetParent()
+// findInteractiveComponentAt returns both the target component and its path
+func findInteractiveComponentAt(root Component, x, y float64) (InteractiveComponent, []InteractiveComponent) {
+	if component, path, ok := findComponentAtWithPath[InteractiveComponent](root, x, y, nil); ok {
+		return component, path
 	}
-	return path
+	return nil, nil
 }
 
-func findInteractiveComponentAt(root Component, x, y float64) InteractiveComponent {
-	if component, ok := findComponentAt[InteractiveComponent](root, x, y); ok {
-		return component
+// findScrollableContainerAt returns both the target component and its path
+func findScrollableContainerAt(root Component, x, y float64) (InteractiveComponent, []InteractiveComponent) {
+	if component, path, ok := findComponentAtWithPath[*ScrollableContainer](root, x, y, nil); ok {
+		return component, path
 	}
-	return nil
+	return nil, nil
 }
 
-func findScrollableContainerAt(root Component, x, y float64) InteractiveComponent {
-	if component, ok := findComponentAt[*ScrollableContainer](root, x, y); ok {
-		return component
-	}
-	return nil
-}
-
-// findComponentAt recursively searches for an component of a given type at the given coordinates.
-// It traverses the component hierarchy in reverse order to find the topmost component first.
-// If an event boundary is encountered, it will stop the search and return nil.
-func findComponentAt[T Component](root Component, x, y float64) (T, bool) {
+// findComponentAtWithPath recursively searches for a component and builds the event path.
+func findComponentAtWithPath[T Component](root Component, x, y float64, currentPath []InteractiveComponent) (T, []InteractiveComponent, bool) {
 	var zero T
 
 	if root == nil {
-		return zero, false
+		return zero, currentPath, false
 	}
 
 	// Check if this component is an event boundary
 	if eb, ok := root.(EventBoundary); ok && !eb.IsWithinBounds(x, y) {
-		return zero, false
+		return zero, currentPath, false
+	}
+
+	// Add this component to the path if it's interactive
+	if interactive, ok := root.(InteractiveComponent); ok {
+		currentPath = append(currentPath, interactive)
 	}
 
 	// Check children first (reverse order to get topmost first)
 	if container, ok := root.(Container); ok {
 		children := container.GetChildren()
 		for i := len(children) - 1; i >= 0; i-- {
-			if component, ok := findComponentAt[T](children[i], x, y); ok {
-				return component, true
+			if component, path, ok := findComponentAtWithPath[T](children[i], x, y, currentPath); ok {
+				return component, path, true
 			}
 		}
 	}
@@ -80,15 +70,15 @@ func findComponentAt[T Component](root Component, x, y float64) (T, bool) {
 	// Check if this component is of the desired type
 	component, ok := root.(T)
 	if !ok {
-		return zero, false
+		return zero, currentPath, false
 	}
 
 	// Check if the point is within the component's bounds
 	if !root.Contains(x, y) {
-		return zero, false
+		return zero, currentPath, false
 	}
 
-	return component, true
+	return component, currentPath, true
 }
 
 // dispatchEvent dispatches the given event to the target component and its ancestors.
@@ -98,8 +88,6 @@ func (im *InputManager) dispatchEvent(event *Event) bool {
 	if event.Target == nil {
 		return true
 	}
-
-	event.Path = im.buildEventPath(event.Target)
 
 	// Capturing Phase
 	event.Phase = PhaseCapture
@@ -133,7 +121,7 @@ func (im *InputManager) Update(root Component) {
 	deltaX := fx - im.lastMouseX
 	deltaY := fy - im.lastMouseY
 
-	target := findInteractiveComponentAt(root, fx, fy)
+	target, path := findInteractiveComponentAt(root, fx, fy)
 
 	// Base event properties
 	baseEvent := Event{
@@ -143,6 +131,7 @@ func (im *InputManager) Update(root Component) {
 		MouseDeltaY: deltaY,
 		Timestamp:   currentTime,
 		Bubbles:     true,
+		Path:        path,
 	}
 
 	// Handle pointer input (mouse/touch)
@@ -175,7 +164,7 @@ func (im *InputManager) Update(root Component) {
 	if wheelX != 0 || wheelY != 0 {
 		wheelEvent := baseEvent
 		wheelEvent.Type = Wheel
-		wheelEvent.Target = findScrollableContainerAt(root, fx, fy)
+		wheelEvent.Target, wheelEvent.Path = findScrollableContainerAt(root, fx, fy)
 		wheelEvent.WheelDeltaX = float64(wheelX)
 		wheelEvent.WheelDeltaY = float64(wheelY)
 		im.dispatchEvent(&wheelEvent)
