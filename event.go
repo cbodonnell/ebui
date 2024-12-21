@@ -16,6 +16,8 @@ const (
 	DragOver   EventType = "dragover"
 	DragEnd    EventType = "dragend"
 	Drop       EventType = "drop"
+	Focus      EventType = "focus"
+	Blur       EventType = "blur"
 )
 
 type EventPhase int

@@ -141,9 +141,7 @@ func NewTextInput(opts ...ComponentOpt) *TextInput {
 
 func (t *TextInput) registerEventListeners() {
 	t.eventDispatcher.AddEventListener(MouseDown, func(e *Event) {
-		t.isFocused = true
-		t.showCursor = true
-		t.lastBlink = time.Now()
+		t.Focus()
 
 		// Calculate cursor position from click, accounting for scroll
 		clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
@@ -171,6 +169,14 @@ func (t *TextInput) registerEventListeners() {
 			t.cursorPos = t.selectionEnd
 			t.ensureCursorVisible()
 		}
+	})
+
+	t.eventDispatcher.AddEventListener(Focus, func(e *Event) {
+		t.Focus()
+	})
+
+	t.eventDispatcher.AddEventListener(Blur, func(e *Event) {
+		t.Blur()
 	})
 }
 
