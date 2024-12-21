@@ -316,7 +316,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	ebiten.SetWindowSize(800, 600)
-	ebiten.SetWindowTitle("EBUI Framework Demo")
+	ebiten.SetWindowTitle("EBUI Tasks Example")
 
 	debug := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
