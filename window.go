@@ -17,6 +17,7 @@ const (
 type WindowColors struct {
 	Background color.Color
 	Header     color.Color
+	Border     color.Color
 }
 
 // DefaultWindowColors returns a default color scheme for windows
@@ -24,6 +25,7 @@ func DefaultWindowColors() WindowColors {
 	return WindowColors{
 		Background: color.RGBA{240, 240, 240, 255},
 		Header:     color.RGBA{200, 200, 200, 255},
+		Border:     color.RGBA{0, 0, 0, 255},
 	}
 }
 
@@ -43,6 +45,7 @@ type Window struct {
 	headerHeight  float64
 	closeCallback func()
 	colors        WindowColors
+	borderWidth   float64
 }
 
 type WindowOpt func(w *Window)
@@ -65,6 +68,13 @@ func WithCloseCallback(callback func()) WindowOpt {
 func WithWindowColors(colors WindowColors) WindowOpt {
 	return func(w *Window) {
 		w.colors = colors
+	}
+}
+
+// WithBorderWidth sets the width of the window border
+func WithBorderWidth(width float64) WindowOpt {
+	return func(w *Window) {
+		w.borderWidth = width
 	}
 }
 
@@ -97,6 +107,16 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	if !w.IsVisible() {
 		return
 	}
+
+	// Draw the window border 1px
+	pos := w.GetAbsolutePosition()
+	size := w.GetSize()
+	bg := ebiten.NewImage(int(size.Width+2), int(size.Height+2))
+	bg.Fill(w.colors.Border)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(pos.X-1, pos.Y-1)
+	screen.DrawImage(bg, op)
+
 	w.LayoutContainer.Draw(screen)
 }
 
@@ -135,8 +155,6 @@ func NewWindowManager(opts ...ComponentOpt) *WindowManager {
 }
 
 func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) *Window {
-	headerHeight := 30.0
-
 	// Create the window
 	window := &Window{
 		BaseInteractive: NewBaseInteractive(),
@@ -145,8 +163,9 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 			WithLayout(NewVerticalStackLayout(0, AlignStart)),
 		),
 		manager:      wm,
-		headerHeight: headerHeight,
+		headerHeight: 30, // Default header height
 		colors:       DefaultWindowColors(),
+		borderWidth:  1, // Default border width
 		state:        WindowStateNormal,
 	}
 
@@ -156,13 +175,12 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 
 	// Create header and content area that fills the window
 	window.header = NewBaseComponent(
-		WithSize(width, headerHeight),
+		WithSize(width, window.headerHeight),
 		WithBackground(window.colors.Header),
 	)
 	window.content = NewLayoutContainer(
-		WithSize(width, height-headerHeight),
+		WithSize(width, height-window.headerHeight),
 		WithBackground(window.colors.Background),
-		WithPadding(10, 10, 10, 10),
 		WithLayout(NewVerticalStackLayout(10, AlignStart)),
 	)
 	window.LayoutContainer.AddChild(window.header)
