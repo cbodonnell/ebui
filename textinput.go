@@ -44,6 +44,8 @@ type TextInput struct {
 	lastRepeat      time.Time
 	onChange        func(string)
 	onSubmit        func(string)
+	isPassword      bool
+	maskChar        rune
 }
 
 type TextInputColors struct {
@@ -97,6 +99,15 @@ func WithOnSubmit(handler func(string)) ComponentOpt {
 	}
 }
 
+// WithPasswordMasking enables password masking with an optional custom mask character
+func WithPasswordMasking() ComponentOpt {
+	return func(c Component) {
+		if t, ok := c.(*TextInput); ok {
+			t.isPassword = true
+		}
+	}
+}
+
 func NewTextInput(opts ...ComponentOpt) *TextInput {
 	colors := DefaultTextInputColors()
 	t := &TextInput{
@@ -116,6 +127,8 @@ func NewTextInput(opts ...ComponentOpt) *TextInput {
 		lastBlink:       time.Now(),
 		onChange:        func(string) {},
 		onSubmit:        func(string) {},
+		isPassword:      false,
+		maskChar:        '*', // Default mask character
 	}
 
 	for _, opt := range opts {
@@ -204,11 +217,20 @@ func (t *TextInput) Draw(screen *ebiten.Image) {
 		t.drawSelection(clippedScreen)
 	}
 
-	// Draw text within clipped area
+	// Draw text or password mask
 	if len(t.text) > 0 {
+		displayText := string(t.text)
+		if t.isPassword {
+			// Create a string of mask characters the same length as the text
+			masked := make([]rune, len(t.text))
+			for i := range masked {
+				masked[i] = t.maskChar
+			}
+			displayText = string(masked)
+		}
 		text.Draw(
 			clippedScreen,
-			string(t.text),
+			displayText,
 			t.font,
 			int(pos.X+padding.Left-t.scrollOffset),
 			int(pos.Y+padding.Top+t.getTextBaseline()),
@@ -288,6 +310,15 @@ func (t *TextInput) getXPositionForIndex(index int) float64 {
 
 	if index > len(t.text) {
 		index = len(t.text)
+	}
+
+	// If in password mode, measure using mask characters
+	if t.isPassword {
+		masked := make([]rune, index)
+		for i := range masked {
+			masked[i] = t.maskChar
+		}
+		return float64(font.MeasureString(t.font, string(masked)).Ceil())
 	}
 
 	return float64(font.MeasureString(t.font, string(t.text[:index])).Ceil())
