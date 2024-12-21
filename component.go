@@ -89,7 +89,7 @@ func WithBackground(color color.Color) ComponentOpt {
 func NewBaseComponent(opts ...ComponentOpt) *BaseComponent {
 	b := &BaseComponent{
 		id:         GenerateID(),
-		background: color.RGBA{0, 0, 0, 0}, // Transparent by default
+		background: color.Transparent,
 	}
 	for _, opt := range opts {
 		opt(b)
@@ -144,6 +144,14 @@ func (b *BaseComponent) SetPadding(padding Padding) {
 
 func (b *BaseComponent) GetPadding() Padding {
 	return b.padding
+}
+
+func (b *BaseComponent) GetBackground() color.Color {
+	return b.background
+}
+
+func (b *BaseComponent) SetBackground(color color.Color) {
+	b.background = color
 }
 
 func (b *BaseComponent) drawBackground(screen *ebiten.Image) {

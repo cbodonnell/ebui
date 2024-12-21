@@ -46,13 +46,13 @@ func NewGame() *Game {
 	// Task management buttons
 	addBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel("Add Task"),
+		ebui.WithLabelText("Add Task"),
 	)
 	addBtn.SetClickHandler(func() { game.addItem() })
 
 	addMultiBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel("Add 5 Tasks"),
+		ebui.WithLabelText("Add 5 Tasks"),
 	)
 	addMultiBtn.SetClickHandler(func() {
 		for i := 0; i < 5; i++ {
@@ -62,14 +62,14 @@ func NewGame() *Game {
 
 	clearBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel("Clear Tasks"),
+		ebui.WithLabelText("Clear Tasks"),
 	)
 	clearBtn.SetClickHandler(func() { game.clearItems() })
 
 	// Window management buttons
 	newWindowBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel("New Window"),
+		ebui.WithLabelText("New Window"),
 	)
 	newWindowBtn.SetClickHandler(func() { game.createRandomWindow() })
 
@@ -141,7 +141,7 @@ func (g *Game) createStatsWindow() {
 
 	updateStatsBtn := ebui.NewButton(
 		ebui.WithSize(250, 40),
-		ebui.WithLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren()))),
+		ebui.WithLabelText(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren()))),
 	)
 	updateStatsBtn.SetClickHandler(func() {
 		updateStatsBtn.SetLabel(fmt.Sprintf("Tasks: %d", len(g.scrollable.GetChildren())))
@@ -197,10 +197,25 @@ func (g *Game) addItem() {
 	i := rand.Intn(3)
 	priority := []string{"Low", "Medium", "High"}[i]
 	status := []string{"New", "In Progress", "Done"}[rand.Intn(3)]
-	background := []color.RGBA{
-		{144, 238, 144, 255}, // Light green
-		{255, 218, 185, 255}, // Peach
-		{255, 182, 193, 255}, // Light pink
+	buttonColors := []ebui.ButtonColors{
+		{
+			// green default, light green hovered, dark green pressed
+			Default: color.RGBA{144, 238, 144, 255},
+			Hovered: color.RGBA{152, 251, 152, 255},
+			Pressed: color.RGBA{50, 205, 50, 255},
+		},
+		{
+			// orange default, light orange hovered, dark orange pressed
+			Default: color.RGBA{255, 218, 185, 255},
+			Hovered: color.RGBA{255, 228, 196, 255},
+			Pressed: color.RGBA{255, 165, 0, 255},
+		},
+		{
+			// pink default, light pink hovered, dark pink pressed
+			Default: color.RGBA{255, 182, 193, 255},
+			Hovered: color.RGBA{255, 192, 203, 255},
+			Pressed: color.RGBA{255, 105, 180, 255},
+		},
 	}[i]
 
 	// Create row container
@@ -213,20 +228,20 @@ func (g *Game) addItem() {
 	// ID label
 	idLabel := ebui.NewButton(
 		ebui.WithSize(100, 40),
-		ebui.WithLabel(fmt.Sprintf("Item %d", g.nextID)),
+		ebui.WithLabelText(fmt.Sprintf("Item %d", g.nextID)),
 	)
 
 	// Priority label
 	priorityLabel := ebui.NewButton(
 		ebui.WithSize(100, 40),
-		ebui.WithLabel(priority),
-		ebui.WithBackground(background),
+		ebui.WithLabelText(priority),
+		ebui.WithButtonColors(buttonColors),
 	)
 
 	// Status button that cycles through states
 	statusBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
-		ebui.WithLabel(status),
+		ebui.WithLabelText(status),
 	)
 	statusBtn.SetClickHandler(func() {
 		currentStatus := statusBtn.GetLabel()
@@ -245,8 +260,12 @@ func (g *Game) addItem() {
 	// Delete button
 	deleteBtn := ebui.NewButton(
 		ebui.WithSize(100, 40),
-		ebui.WithLabel("Delete"),
-		ebui.WithBackground(color.RGBA{255, 192, 192, 255}), // Light red
+		ebui.WithLabelText("Delete"),
+		ebui.WithButtonColors(ebui.ButtonColors{
+			Default: color.RGBA{255, 99, 71, 255}, // Tomato
+			Hovered: color.RGBA{255, 69, 0, 255},  // OrangeRed
+			Pressed: color.RGBA{178, 34, 34, 255}, // FireBrick
+		}),
 	)
 	deleteBtn.SetClickHandler(func() {
 		g.scrollable.RemoveChild(row)
