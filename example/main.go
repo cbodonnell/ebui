@@ -43,6 +43,18 @@ func NewGame() *Game {
 		ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignCenter)),
 	)
 
+	input := ebui.NewTextInput(
+		ebui.WithSize(200, 30),
+		ebui.WithTextInputColors(ebui.DefaultTextInputColors()),
+		ebui.WithInitialText("Hello"),
+		ebui.WithOnChange(func(text string) {
+			fmt.Printf("Text changed: %s\n", text)
+		}),
+		ebui.WithOnSubmit(func(text string) {
+			fmt.Printf("Text submitted: %s\n", text)
+		}),
+	)
+
 	// Task management buttons
 	addBtn := ebui.NewButton(
 		ebui.WithSize(120, 40),
@@ -73,6 +85,7 @@ func NewGame() *Game {
 	)
 	newWindowBtn.SetClickHandler(func() { game.createRandomWindow() })
 
+	header.AddChild(input)
 	header.AddChild(addBtn)
 	header.AddChild(addMultiBtn)
 	header.AddChild(clearBtn)
