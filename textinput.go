@@ -1,7 +1,9 @@
 package ebui
 
 import (
+	"image"
 	"image/color"
+	"math"
 	"time"
 	"unicode"
 
@@ -17,13 +19,10 @@ var _ InteractiveComponent = &TextInput{}
 func init() {
 	err := clipboard.Init()
 	if err != nil {
-		// Note: In a real application, you might want to handle this error differently
-		// For now, we'll just print it and continue without clipboard support
 		println("Warning: Failed to initialize clipboard:", err)
 	}
 }
 
-// TextInput represents a single-line text input field
 type TextInput struct {
 	*BaseInteractive
 	*LayoutContainer
@@ -31,6 +30,7 @@ type TextInput struct {
 	cursorPos       int
 	selectionStart  int
 	selectionEnd    int
+	scrollOffset    float64 // Tracks horizontal scroll position
 	font            font.Face
 	textColor       color.Color
 	backgroundColor color.Color
@@ -46,7 +46,6 @@ type TextInput struct {
 	onSubmit        func(string)
 }
 
-// TextInputColors holds the color scheme for a text input
 type TextInputColors struct {
 	Text       color.Color
 	Background color.Color
@@ -54,13 +53,12 @@ type TextInputColors struct {
 	Selection  color.Color
 }
 
-// DefaultTextInputColors returns the default color scheme
 func DefaultTextInputColors() TextInputColors {
 	return TextInputColors{
 		Text:       color.Black,
 		Background: color.White,
 		Cursor:     color.Black,
-		Selection:  color.RGBA{100, 149, 237, 127}, // Semi-transparent cornflower blue
+		Selection:  color.RGBA{100, 149, 237, 127},
 	}
 }
 
@@ -99,7 +97,6 @@ func WithOnSubmit(handler func(string)) ComponentOpt {
 	}
 }
 
-// NewTextInput creates a new text input component
 func NewTextInput(opts ...ComponentOpt) *TextInput {
 	colors := DefaultTextInputColors()
 	t := &TextInput{
@@ -109,6 +106,7 @@ func NewTextInput(opts ...ComponentOpt) *TextInput {
 		cursorPos:       0,
 		selectionStart:  -1,
 		selectionEnd:    -1,
+		scrollOffset:    0,
 		repeatKey:       -1,
 		font:            basicfont.Face7x13,
 		textColor:       colors.Text,
@@ -134,8 +132,8 @@ func (t *TextInput) registerEventListeners() {
 		t.showCursor = true
 		t.lastBlink = time.Now()
 
-		// Calculate cursor position from click
-		clickX := e.MouseX - t.GetAbsolutePosition().X
+		// Calculate cursor position from click, accounting for scroll
+		clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
 		t.cursorPos = t.getCharIndexAtX(clickX)
 		t.selectionStart = t.cursorPos
 		t.selectionEnd = t.cursorPos
@@ -143,7 +141,7 @@ func (t *TextInput) registerEventListeners() {
 
 	t.eventDispatcher.AddEventListener(MouseUp, func(e *Event) {
 		if t.isFocused {
-			clickX := e.MouseX - t.GetAbsolutePosition().X
+			clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
 			endPos := t.getCharIndexAtX(clickX)
 
 			if endPos != t.selectionStart {
@@ -155,20 +153,19 @@ func (t *TextInput) registerEventListeners() {
 
 	t.eventDispatcher.AddEventListener(Drag, func(e *Event) {
 		if t.isFocused {
-			clickX := e.MouseX - t.GetAbsolutePosition().X
+			clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
 			t.selectionEnd = t.getCharIndexAtX(clickX)
 			t.cursorPos = t.selectionEnd
+			t.ensureCursorVisible()
 		}
 	})
 }
 
 func (t *TextInput) Update() error {
-	// Handle keyboard input if focused
 	if t.isFocused {
 		t.handleKeyboardInput()
 	}
 
-	// Update cursor blink
 	if t.isFocused {
 		if time.Since(t.lastBlink) > 530*time.Millisecond {
 			t.showCursor = !t.showCursor
@@ -186,325 +183,95 @@ func (t *TextInput) Draw(screen *ebiten.Image) {
 	size := t.GetSize()
 	padding := t.GetPadding()
 
-	// Draw background
-	bg := ebiten.NewImage(int(size.Width), int(size.Height))
+	// Draw background first on the main screen
+	bg := ebiten.NewImage(int(size.Width-padding.Left-padding.Right), int(size.Height-padding.Top-padding.Bottom))
 	bg.Fill(t.backgroundColor)
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(pos.X, pos.Y)
+	op.GeoM.Translate(pos.X+padding.Left, pos.Y+padding.Top)
 	screen.DrawImage(bg, op)
+
+	// Create clip bounds for text content
+	clipBounds := image.Rect(
+		int(pos.X+padding.Left),
+		int(pos.Y+padding.Top),
+		int(pos.X+size.Width-padding.Right),
+		int(pos.Y+size.Height-padding.Bottom),
+	)
+	clippedScreen := screen.SubImage(clipBounds).(*ebiten.Image)
 
 	// Draw selection if exists
 	if t.hasSelection() {
-		t.drawSelection(screen)
+		t.drawSelection(clippedScreen)
 	}
 
-	// Draw text
+	// Draw text within clipped area
 	if len(t.text) > 0 {
 		text.Draw(
-			screen,
+			clippedScreen,
 			string(t.text),
 			t.font,
-			int(pos.X+padding.Left),
+			int(pos.X+padding.Left-t.scrollOffset),
 			int(pos.Y+padding.Top+t.getTextBaseline()),
 			t.textColor,
 		)
 	}
 
-	// Draw cursor
+	// Draw cursor on the main screen (not clipped)
 	if t.isFocused && t.showCursor {
 		t.drawCursor(screen)
 	}
 }
 
-func (t *TextInput) handleKeyboardInput() {
-	// Handle character input
-	t.handleCharacterInput()
+// Scroll handling methods
 
-	// Handle special keys
-	t.handleSpecialKeys()
-
-	// Handle key repeating
-	t.handleKeyRepeat()
-}
-
-func (t *TextInput) handleCharacterInput() {
-	// Get input string from Ebitengine
-	inputChars := ebiten.AppendInputChars(nil)
-	if len(inputChars) > 0 {
-		if t.hasSelection() {
-			t.deleteSelection()
-		}
-
-		for _, ch := range inputChars {
-			if unicode.IsPrint(ch) {
-				// Insert character at cursor position
-				newText := make([]rune, len(t.text)+1)
-				copy(newText, t.text[:t.cursorPos])
-				newText[t.cursorPos] = ch
-				copy(newText[t.cursorPos+1:], t.text[t.cursorPos:])
-				t.text = newText
-				t.cursorPos++
-
-				if t.onChange != nil {
-					t.onChange(string(t.text))
-				}
-			}
-		}
-	}
-}
-
-func (t *TextInput) handleSpecialKeys() {
-	// Handle keyboard shortcuts first
-	ctrlPressed := ebiten.IsKeyPressed(ebiten.KeyControl) || ebiten.IsKeyPressed(ebiten.KeyMeta)
-	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
-	if ctrlPressed {
-		// Handle Ctrl+A (Select All)
-		if ebiten.IsKeyPressed(ebiten.KeyA) {
-			if t.repeatKey != ebiten.KeyA {
-				t.selectAll()
-				t.repeatKey = ebiten.KeyA
-				t.repeatStart = time.Now()
-				t.lastRepeat = time.Now()
-			}
-			return
-		} else if t.repeatKey == ebiten.KeyA {
-			t.repeatKey = -1
-		}
-
-		// Handle Ctrl+X (Cut)
-		if ebiten.IsKeyPressed(ebiten.KeyX) {
-			if t.repeatKey != ebiten.KeyX {
-				t.handleCut()
-				t.repeatKey = ebiten.KeyX
-				t.repeatStart = time.Now()
-				t.lastRepeat = time.Now()
-			}
-			return
-		} else if t.repeatKey == ebiten.KeyX {
-			t.repeatKey = -1
-		}
-
-		// Handle Ctrl+C (Copy)
-		if ebiten.IsKeyPressed(ebiten.KeyC) {
-			if t.repeatKey != ebiten.KeyC {
-				t.handleCopy()
-				t.repeatKey = ebiten.KeyC
-				t.repeatStart = time.Now()
-				t.lastRepeat = time.Now()
-			}
-			return
-		} else if t.repeatKey == ebiten.KeyC {
-			t.repeatKey = -1
-		}
-
-		// Handle Ctrl+V (Paste)
-		if ebiten.IsKeyPressed(ebiten.KeyV) {
-			if t.repeatKey != ebiten.KeyV {
-				t.handlePaste()
-				t.repeatKey = ebiten.KeyV
-				t.repeatStart = time.Now()
-				t.lastRepeat = time.Now()
-			}
-			return
-		} else if t.repeatKey == ebiten.KeyV {
-			t.repeatKey = -1
-		}
-	}
-
-	// Define the keys we want to handle
-	keys := []ebiten.Key{
-		ebiten.KeyLeft,
-		ebiten.KeyRight,
-		ebiten.KeyBackspace,
-		ebiten.KeyDelete,
-		ebiten.KeyEnter,
-		ebiten.KeyHome,
-		ebiten.KeyEnd,
-	}
-
-	for _, key := range keys {
-		if ebiten.IsKeyPressed(key) {
-			// Start key repeat when key is first pressed
-			if t.repeatKey != key {
-				t.repeatKey = key
-				t.repeatStart = time.Now()
-				t.lastRepeat = time.Now()
-				t.handleKey(key, ctrlPressed, shiftPressed)
-			}
-		} else if t.repeatKey == key {
-			// Key was released
-			t.repeatKey = -1
-		}
-	}
-}
-
-func (t *TextInput) handleKeyRepeat() {
-	if t.repeatKey == -1 {
-		return
-	}
-
-	now := time.Now()
-	// Initial delay of 500ms, then repeat every 50ms
-	var shouldRepeat bool
-	if time.Since(t.repeatStart) < 500*time.Millisecond {
-		shouldRepeat = false
-	} else if time.Since(t.lastRepeat) >= 50*time.Millisecond {
-		shouldRepeat = true
-	}
-
-	if !shouldRepeat {
-		return
-	}
-
-	ctrlPressed := ebiten.IsKeyPressed(ebiten.KeyControl) || ebiten.IsKeyPressed(ebiten.KeyMeta)
-	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
-
-	// Handle ctrl+key combinations
-	if ctrlPressed {
-		switch t.repeatKey {
-		case ebiten.KeyV:
-			t.handlePaste()
-		case ebiten.KeyC:
-			t.handleCopy()
-		case ebiten.KeyX:
-			t.handleCut()
-		case ebiten.KeyA:
-			t.selectAll()
-		default:
-			t.handleKey(t.repeatKey, ctrlPressed, shiftPressed)
-		}
-	} else {
-		t.handleKey(t.repeatKey, ctrlPressed, shiftPressed)
-	}
-
-	t.lastRepeat = now
-}
-
-func (t *TextInput) handleKey(key ebiten.Key, ctrlPressed, shiftPressed bool) {
-	switch key {
-	case ebiten.KeyLeft:
-		prevPos := t.cursorPos
-		if ctrlPressed {
-			// Move to previous word
-			t.cursorPos = t.findPreviousWordBoundary()
-		} else if t.cursorPos > 0 {
-			t.cursorPos--
-		}
-		if !shiftPressed {
-			t.ClearSelection()
-		} else {
-			if t.selectionStart == -1 {
-				t.selectionStart = prevPos
-			}
-			t.selectionEnd = t.cursorPos
-		}
-
-	case ebiten.KeyRight:
-		prevPos := t.cursorPos
-		if ctrlPressed {
-			// Move to next word
-			t.cursorPos = t.findNextWordBoundary()
-		} else if t.cursorPos < len(t.text) {
-			t.cursorPos++
-		}
-		if !shiftPressed {
-			t.ClearSelection()
-		} else {
-			if t.selectionStart == -1 {
-				t.selectionStart = prevPos
-			}
-			t.selectionEnd = t.cursorPos
-		}
-
-	case ebiten.KeyBackspace:
-		if t.hasSelection() {
-			t.deleteSelection()
-		} else if t.cursorPos > 0 {
-			t.text = append(t.text[:t.cursorPos-1], t.text[t.cursorPos:]...)
-			t.cursorPos--
-			if t.onChange != nil {
-				t.onChange(string(t.text))
-			}
-		}
-
-	case ebiten.KeyDelete:
-		if t.hasSelection() {
-			t.deleteSelection()
-		} else if t.cursorPos < len(t.text) {
-			t.text = append(t.text[:t.cursorPos], t.text[t.cursorPos+1:]...)
-			if t.onChange != nil {
-				t.onChange(string(t.text))
-			}
-		}
-
-	case ebiten.KeyEnter:
-		if t.onSubmit != nil {
-			t.onSubmit(string(t.text))
-		}
-
-	case ebiten.KeyHome:
-		t.cursorPos = 0
-
-	case ebiten.KeyEnd:
-		t.cursorPos = len(t.text)
-	}
-
-	t.showCursor = true
-	t.lastBlink = time.Now()
-}
-
-func (t *TextInput) drawSelection(screen *ebiten.Image) {
-	if !t.hasSelection() {
-		return
-	}
-
-	start, end := t.getOrderedSelection()
-	startX := t.getXPositionForIndex(start)
-	endX := t.getXPositionForIndex(end)
-
-	pos := t.GetAbsolutePosition()
-	size := t.GetSize()
+func (t *TextInput) ensureCursorVisible() {
 	padding := t.GetPadding()
-
-	selectionWidth := endX - startX
-	selectionHeight := size.Height - padding.Top - padding.Bottom
-
-	selection := ebiten.NewImage(int(selectionWidth), int(selectionHeight))
-	selection.Fill(t.selectionColor)
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(
-		pos.X+padding.Left+startX,
-		pos.Y+padding.Top,
-	)
-	screen.DrawImage(selection, op)
-}
-
-func (t *TextInput) drawCursor(screen *ebiten.Image) {
-	pos := t.GetAbsolutePosition()
-	size := t.GetSize()
-	padding := t.GetPadding()
-
+	availableWidth := t.GetSize().Width - padding.Left - padding.Right
 	cursorX := t.getXPositionForIndex(t.cursorPos)
 
-	cursor := ebiten.NewImage(1, int(size.Height-padding.Top-padding.Bottom))
-	cursor.Fill(t.cursorColor)
+	// If cursor is to the left of the visible area
+	if cursorX < t.scrollOffset {
+		t.scrollOffset = cursorX
+	}
 
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(
-		pos.X+padding.Left+cursorX,
-		pos.Y+padding.Top,
-	)
-	screen.DrawImage(cursor, op)
+	// If cursor is beyond the right edge of the visible area
+	if cursorX > t.scrollOffset+availableWidth {
+		t.scrollOffset = cursorX - availableWidth
+	}
+
+	// Clamp scroll offset to valid range
+	maxScroll := math.Max(0, t.getXPositionForIndex(len(t.text))-availableWidth)
+	t.scrollOffset = clamp(t.scrollOffset, 0, maxScroll)
+}
+
+func (t *TextInput) getMaxScroll() float64 {
+	if len(t.text) == 0 {
+		return 0
+	}
+
+	padding := t.GetPadding()
+	textWidth := t.getXPositionForIndex(len(t.text))
+	availableWidth := t.GetSize().Width - padding.Left - padding.Right
+
+	if textWidth <= availableWidth {
+		return 0
+	}
+
+	return textWidth - availableWidth
 }
 
 // Helper methods
+
 func (t *TextInput) getTextBaseline() float64 {
 	metrics := t.font.Metrics()
 	return (t.GetSize().Height-float64(metrics.Height.Ceil()))/2 + float64(metrics.Ascent.Ceil())
 }
 
 func (t *TextInput) getCharIndexAtX(x float64) int {
+	if x <= 0 {
+		return 0
+	}
+
 	for i := 0; i <= len(t.text); i++ {
 		charX := t.getXPositionForIndex(i)
 		if x < charX {
@@ -537,8 +304,271 @@ func (t *TextInput) getOrderedSelection() (int, int) {
 	return t.selectionEnd, t.selectionStart
 }
 
+func (t *TextInput) drawSelection(screen *ebiten.Image) {
+	if !t.hasSelection() {
+		return
+	}
+
+	start, end := t.getOrderedSelection()
+	startX := t.getXPositionForIndex(start) - t.scrollOffset
+	endX := t.getXPositionForIndex(end) - t.scrollOffset
+
+	pos := t.GetAbsolutePosition()
+	size := t.GetSize()
+	padding := t.GetPadding()
+
+	selectionWidth := endX - startX
+	selectionHeight := size.Height - padding.Top - padding.Bottom
+
+	selection := ebiten.NewImage(int(selectionWidth), int(selectionHeight))
+	selection.Fill(t.selectionColor)
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(
+		pos.X+padding.Left+startX,
+		pos.Y+padding.Top,
+	)
+	screen.DrawImage(selection, op)
+}
+
+func (t *TextInput) drawCursor(screen *ebiten.Image) {
+	pos := t.GetAbsolutePosition()
+	size := t.GetSize()
+	padding := t.GetPadding()
+
+	cursorX := t.getXPositionForIndex(t.cursorPos) - t.scrollOffset
+
+	cursor := ebiten.NewImage(1, int(size.Height-padding.Top-padding.Bottom))
+	cursor.Fill(t.cursorColor)
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(
+		pos.X+padding.Left+cursorX,
+		pos.Y+padding.Top,
+	)
+	screen.DrawImage(cursor, op)
+}
+
+// Input handling methods
+
+func (t *TextInput) handleKeyboardInput() {
+	t.handleCharacterInput()
+	t.handleSpecialKeys()
+	t.handleKeyRepeat()
+}
+
+func (t *TextInput) handleCharacterInput() {
+	inputChars := ebiten.AppendInputChars(nil)
+	if len(inputChars) > 0 {
+		if t.hasSelection() {
+			t.deleteSelection()
+		}
+
+		for _, ch := range inputChars {
+			if unicode.IsPrint(ch) {
+				newText := make([]rune, len(t.text)+1)
+				copy(newText, t.text[:t.cursorPos])
+				newText[t.cursorPos] = ch
+				copy(newText[t.cursorPos+1:], t.text[t.cursorPos:])
+				t.text = newText
+				t.cursorPos++
+				t.ensureCursorVisible()
+
+				if t.onChange != nil {
+					t.onChange(string(t.text))
+				}
+			}
+		}
+	}
+}
+
+func (t *TextInput) handleSpecialKeys() {
+	ctrlPressed := ebiten.IsKeyPressed(ebiten.KeyControl) || ebiten.IsKeyPressed(ebiten.KeyMeta)
+	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
+
+	// Handle keyboard shortcuts only if it's not an arrow key
+	if ctrlPressed {
+		shortcuts := map[ebiten.Key]func(){
+			ebiten.KeyA: t.selectAll,
+			ebiten.KeyX: t.handleCut,
+			ebiten.KeyC: t.handleCopy,
+			ebiten.KeyV: t.handlePaste,
+		}
+
+		for key, handler := range shortcuts {
+			if ebiten.IsKeyPressed(key) {
+				if t.repeatKey != key {
+					handler()
+					t.repeatKey = key
+					t.repeatStart = time.Now()
+					t.lastRepeat = time.Now()
+				}
+				return
+			} else if t.repeatKey == key {
+				t.repeatKey = -1
+			}
+		}
+	}
+
+	// Define the keys we want to handle
+	keys := []ebiten.Key{
+		ebiten.KeyLeft,
+		ebiten.KeyRight,
+		ebiten.KeyBackspace,
+		ebiten.KeyDelete,
+		ebiten.KeyEnter,
+		ebiten.KeyHome,
+		ebiten.KeyEnd,
+	}
+
+	for _, key := range keys {
+		if ebiten.IsKeyPressed(key) {
+			if t.repeatKey != key {
+				t.repeatKey = key
+				t.repeatStart = time.Now()
+				t.lastRepeat = time.Now()
+				t.handleKey(key, ctrlPressed, shiftPressed)
+			}
+		} else if t.repeatKey == key {
+			t.repeatKey = -1
+		}
+	}
+}
+
+// Removed handleCtrlShortcuts as it's now integrated into handleSpecialKeys
+
+func (t *TextInput) handleKeyRepeat() {
+	if t.repeatKey == -1 {
+		return
+	}
+
+	now := time.Now()
+	initialDelay := 500 * time.Millisecond
+	repeatDelay := 50 * time.Millisecond
+
+	shouldRepeat := time.Since(t.repeatStart) >= initialDelay &&
+		time.Since(t.lastRepeat) >= repeatDelay
+
+	if !shouldRepeat {
+		return
+	}
+
+	ctrlPressed := ebiten.IsKeyPressed(ebiten.KeyControl) || ebiten.IsKeyPressed(ebiten.KeyMeta)
+	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
+
+	// Handle repeatable shortcuts when ctrl is pressed
+	if ctrlPressed {
+		switch t.repeatKey {
+		case ebiten.KeyV:
+			t.handlePaste()
+		case ebiten.KeyLeft, ebiten.KeyRight:
+			// Allow ctrl+arrow keys to repeat for word-by-word movement
+			t.handleKey(t.repeatKey, ctrlPressed, shiftPressed)
+		}
+	} else {
+		// Handle regular key repeats
+		t.handleKey(t.repeatKey, ctrlPressed, shiftPressed)
+	}
+
+	t.lastRepeat = now
+}
+
+func (t *TextInput) handleKey(key ebiten.Key, ctrlPressed, shiftPressed bool) {
+	switch key {
+	case ebiten.KeyLeft:
+		t.handleLeftKey(ctrlPressed, shiftPressed)
+	case ebiten.KeyRight:
+		t.handleRightKey(ctrlPressed, shiftPressed)
+	case ebiten.KeyBackspace:
+		t.handleBackspace()
+	case ebiten.KeyDelete:
+		t.handleDelete()
+	case ebiten.KeyEnter:
+		if t.onSubmit != nil {
+			t.onSubmit(string(t.text))
+		}
+	case ebiten.KeyHome:
+		t.handleHome(shiftPressed)
+	case ebiten.KeyEnd:
+		t.handleEnd(shiftPressed)
+	}
+
+	t.ensureCursorVisible()
+	t.showCursor = true
+	t.lastBlink = time.Now()
+}
+
+func (t *TextInput) handleLeftKey(ctrlPressed, shiftPressed bool) {
+	prevPos := t.cursorPos
+	if ctrlPressed {
+		t.cursorPos = t.findPreviousWordBoundary()
+	} else if t.cursorPos > 0 {
+		t.cursorPos--
+	}
+
+	t.updateSelection(prevPos, shiftPressed)
+}
+
+func (t *TextInput) handleRightKey(ctrlPressed, shiftPressed bool) {
+	prevPos := t.cursorPos
+	if ctrlPressed {
+		t.cursorPos = t.findNextWordBoundary()
+	} else if t.cursorPos < len(t.text) {
+		t.cursorPos++
+	}
+
+	t.updateSelection(prevPos, shiftPressed)
+}
+
+func (t *TextInput) updateSelection(prevPos int, shiftPressed bool) {
+	if !shiftPressed {
+		t.ClearSelection()
+	} else {
+		if t.selectionStart == -1 {
+			t.selectionStart = prevPos
+		}
+		t.selectionEnd = t.cursorPos
+	}
+}
+
+func (t *TextInput) handleHome(shiftPressed bool) {
+	prevPos := t.cursorPos
+	t.cursorPos = 0
+	t.updateSelection(prevPos, shiftPressed)
+}
+
+func (t *TextInput) handleEnd(shiftPressed bool) {
+	prevPos := t.cursorPos
+	t.cursorPos = len(t.text)
+	t.updateSelection(prevPos, shiftPressed)
+}
+
+func (t *TextInput) handleBackspace() {
+	if t.hasSelection() {
+		t.deleteSelection()
+	} else if t.cursorPos > 0 {
+		t.text = append(t.text[:t.cursorPos-1], t.text[t.cursorPos:]...)
+		t.cursorPos--
+		if t.onChange != nil {
+			t.onChange(string(t.text))
+		}
+	}
+}
+
+func (t *TextInput) handleDelete() {
+	if t.hasSelection() {
+		t.deleteSelection()
+	} else if t.cursorPos < len(t.text) {
+		t.text = append(t.text[:t.cursorPos], t.text[t.cursorPos+1:]...)
+		if t.onChange != nil {
+			t.onChange(string(t.text))
+		}
+	}
+}
+
 func (t *TextInput) findPreviousWordBoundary() int {
 	pos := t.cursorPos
+
 	// Skip spaces before cursor
 	for pos > 0 && unicode.IsSpace(t.text[pos-1]) {
 		pos--
@@ -552,6 +582,7 @@ func (t *TextInput) findPreviousWordBoundary() int {
 
 func (t *TextInput) findNextWordBoundary() int {
 	pos := t.cursorPos
+
 	// Skip current word
 	for pos < len(t.text) && !unicode.IsSpace(t.text[pos]) {
 		pos++
@@ -571,8 +602,7 @@ func (t *TextInput) deleteSelection() {
 	start, end := t.getOrderedSelection()
 	t.text = append(t.text[:start], t.text[end:]...)
 	t.cursorPos = start
-	t.selectionStart = -1
-	t.selectionEnd = -1
+	t.ClearSelection()
 
 	if t.onChange != nil {
 		t.onChange(string(t.text))
@@ -581,48 +611,42 @@ func (t *TextInput) deleteSelection() {
 
 // Public API methods
 
-// SetText sets the text content of the input field
 func (t *TextInput) SetText(text string) {
 	t.text = []rune(text)
 	t.cursorPos = len(t.text)
-	t.selectionStart = -1
-	t.selectionEnd = -1
+	t.ClearSelection()
+	t.scrollOffset = 0
+	t.ensureCursorVisible()
 	if t.onChange != nil {
 		t.onChange(text)
 	}
 }
 
-// GetText returns the current text content
 func (t *TextInput) GetText() string {
 	return string(t.text)
 }
 
-// Focus sets the input field as focused
 func (t *TextInput) Focus() {
 	t.isFocused = true
 	t.showCursor = true
 	t.lastBlink = time.Now()
+	t.ensureCursorVisible()
 }
 
-// Blur removes focus from the input field
 func (t *TextInput) Blur() {
 	t.isFocused = false
 	t.showCursor = false
-	t.selectionStart = -1
-	t.selectionEnd = -1
+	t.ClearSelection()
 }
 
-// IsFocused returns whether the input field is currently focused
 func (t *TextInput) IsFocused() bool {
 	return t.isFocused
 }
 
-// SetFont sets the font used for rendering text
 func (t *TextInput) SetFont(font font.Face) {
 	t.font = font
 }
 
-// selectAll selects all text in the input
 func (t *TextInput) selectAll() {
 	if len(t.text) > 0 {
 		t.selectionStart = 0
@@ -630,10 +654,10 @@ func (t *TextInput) selectAll() {
 		t.cursorPos = t.selectionEnd
 		t.showCursor = true
 		t.lastBlink = time.Now()
+		t.ensureCursorVisible() // Ensure cursor stays in bounds when selecting all
 	}
 }
 
-// handleCopy copies selected text to clipboard
 func (t *TextInput) handleCopy() {
 	if !t.hasSelection() {
 		return
@@ -643,7 +667,6 @@ func (t *TextInput) handleCopy() {
 	clipboard.Write(clipboard.FmtText, []byte(text))
 }
 
-// handleCut cuts selected text to clipboard
 func (t *TextInput) handleCut() {
 	if !t.hasSelection() {
 		return
@@ -652,7 +675,6 @@ func (t *TextInput) handleCut() {
 	t.deleteSelection()
 }
 
-// handlePaste pastes text from clipboard
 func (t *TextInput) handlePaste() {
 	bytes := clipboard.Read(clipboard.FmtText)
 	if len(bytes) == 0 {
@@ -679,13 +701,13 @@ func (t *TextInput) handlePaste() {
 	newText = append(newText, t.text[t.cursorPos:]...)
 	t.text = newText
 	t.cursorPos += len(filtered)
+	t.ensureCursorVisible()
 
 	if t.onChange != nil {
 		t.onChange(string(t.text))
 	}
 }
 
-// Select selects a range of text
 func (t *TextInput) Select(start, end int) {
 	if start < 0 {
 		start = 0
@@ -702,9 +724,9 @@ func (t *TextInput) Select(start, end int) {
 	t.cursorPos = end
 	t.showCursor = true
 	t.lastBlink = time.Now()
+	t.ensureCursorVisible()
 }
 
-// ClearSelection clears the current selection
 func (t *TextInput) ClearSelection() {
 	t.selectionStart = -1
 	t.selectionEnd = -1
