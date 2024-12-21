@@ -1,17 +1,17 @@
 # EBUI - Ebitengine UI Framework
 
-EBUI is a comprehensive UI framework for [Ebitengine](https://ebitengine.org/), providing a robust set of components and layouts for building game interfaces and tools.
+EBUI is a comprehensive UI framework for [Ebitengine](https://ebitengine.org/), providing a set of components and layouts for building game interfaces and tools.
 
 ## Features
 
 - **Component-Based Architecture**: Build UIs using reusable, composable components
 - **Flexible Layout System**: Arrange components using various layout strategies
-- **Event System**: Handle user interactions with a comprehensive event system
-- **Rich Component Library**:
-  - Buttons with customizable colors and states
+- **Event System**: Handle user interactions with a flexible event system
+- **Component Library**:
   - Labels with text alignment options
+  - Buttons with customizable colors and states
   - Text inputs with selection and clipboard support
-  - Scrollable containers
+  - Scrollable content containers
   - Windows with drag-and-drop functionality
 
 ## Installation
@@ -112,22 +112,6 @@ Containers are components that can hold other components. EBUI provides several 
 - **ScrollableContainer**: Container with scrolling capability
 - **ZIndexedContainer**: Container that manages component layering
 - **WindowManager**: Special container for managing multiple windows
-
-Custom 
-
-```go
-// Basic container
-container := ebui.NewBaseContainer(
-    ebui.WithSize(400, 300),
-    ebui.WithPadding(10, 10, 10, 10),
-)
-
-// Layout container with vertical stack
-layoutContainer := ebui.NewLayoutContainer(
-    ebui.WithSize(400, 300),
-    ebui.WithLayout(ebui.NewVerticalStackLayout(10, ebui.AlignStart)),
-)
-```
 
 ### Layouts
 
