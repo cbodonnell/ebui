@@ -53,7 +53,7 @@ func NewGame() *Game {
 		ebui.WithOnSubmit(func(text string) {
 			fmt.Printf("Text submitted: %s\n", text)
 		}),
-		ebui.WithPasswordMasking(),
+		// ebui.WithPasswordMasking(),
 	)
 
 	// Task management buttons
