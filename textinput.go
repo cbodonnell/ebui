@@ -16,10 +16,13 @@ import (
 
 var _ InteractiveComponent = &TextInput{}
 
+var clipboardDisabled bool
+
 func init() {
 	err := clipboard.Init()
 	if err != nil {
 		println("Warning: Failed to initialize clipboard:", err)
+		clipboardDisabled = true
 	}
 }
 
@@ -696,6 +699,9 @@ func (t *TextInput) selectAll() {
 }
 
 func (t *TextInput) handleCopy() {
+	if clipboardDisabled {
+		return
+	}
 	if !t.hasSelection() {
 		return
 	}
@@ -705,6 +711,9 @@ func (t *TextInput) handleCopy() {
 }
 
 func (t *TextInput) handleCut() {
+	if clipboardDisabled {
+		return
+	}
 	if !t.hasSelection() {
 		return
 	}
@@ -713,6 +722,10 @@ func (t *TextInput) handleCut() {
 }
 
 func (t *TextInput) handlePaste() {
+	if clipboardDisabled {
+		return
+	}
+
 	bytes := clipboard.Read(clipboard.FmtText)
 	if len(bytes) == 0 {
 		return
