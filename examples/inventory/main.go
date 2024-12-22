@@ -23,8 +23,8 @@ func NewInventoryGame() *InventoryGame {
 	wm := ebui.NewWindowManager()
 
 	// Create the window
-	window := wm.CreateWindow(302, 320,
-		ebui.WithWindowPosition(151, 160),
+	window := wm.CreateWindow(318, 336,
+		ebui.WithWindowPosition(160, 160),
 		ebui.WithWindowTitle("Inventory"),
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
@@ -35,7 +35,7 @@ func NewInventoryGame() *InventoryGame {
 
 	// Create the inventory component
 	inv := NewInventory(
-		ebui.WithSize(302, 290),
+		ebui.WithSize(318, 306),
 		ebui.WithPosition(ebui.Position{X: 10, Y: 10}),
 		ebui.WithBackground(color.RGBA{255, 255, 255, 255}),
 		ebui.WithPadding(10, 10, 10, 10),
@@ -69,7 +69,9 @@ func NewInventoryGame() *InventoryGame {
 	return game
 }
 
-// Inventory component is a scrollable container with inventory slots
+// Inventory is a custom component implementing a scrollable inventory.
+// It embeds the ScrollableContainer component and adds inventory-specific
+// functionality.
 type Inventory struct {
 	*ebui.ScrollableContainer
 	slots         []*InventorySlot
@@ -99,7 +101,7 @@ func NewInventory(opts ...ebui.ComponentOpt) *Inventory {
 
 	// Create a vertical container to hold the inventory rows
 	gridContainer := ebui.NewLayoutContainer(
-		ebui.WithSize(288, 550),
+		ebui.WithSize(286, 582), // 4x8 grid of 64x64 slots with 10px padding
 		ebui.WithBackground(color.RGBA{255, 255, 255, 255}),
 		ebui.WithLayout(ebui.NewVerticalStackLayout(10, ebui.AlignStart)),
 	)
@@ -109,7 +111,7 @@ func NewInventory(opts ...ebui.ComponentOpt) *Inventory {
 	for i := 0; i < len(inv.slots); i++ {
 		if i%4 == 0 {
 			row = ebui.NewLayoutContainer(
-				ebui.WithSize(302, 60),
+				ebui.WithSize(286, 64), // each slot is 64x64 with 10px spacing
 				ebui.WithLayout(ebui.NewHorizontalStackLayout(10, ebui.AlignStart)),
 			)
 			rows = append(rows, row)
@@ -130,27 +132,19 @@ func NewInventory(opts ...ebui.ComponentOpt) *Inventory {
 
 // Update isWithinInventory to account for scrolling
 func (inv *Inventory) isWithinInventory(x, y float64) bool {
-	// Get the visible bounds of the scrollable container
-	scrollablePos := inv.GetAbsolutePosition()
-	scrollableSize := inv.GetSize()
-
-	// Check if the point is within the visible area of the scrollable container
-	return x >= scrollablePos.X &&
-		x <= scrollablePos.X+scrollableSize.Width &&
-		y >= scrollablePos.Y &&
-		y <= scrollablePos.Y+scrollableSize.Height
+	return inv.BaseComponent.Contains(x, y)
 }
 
 func (inv *Inventory) startDragging(slot *InventorySlot, mouseX, mouseY float64) {
 	inv.draggedItem = slot.item
 	inv.dragStartSlot = slot
-	inv.dragX = mouseX - 30 // Center the item on cursor
-	inv.dragY = mouseY - 30
+	inv.dragX = mouseX - 32 // Center the item on cursor
+	inv.dragY = mouseY - 32
 }
 
 func (inv *Inventory) updateDragPosition(mouseX, mouseY float64) {
-	inv.dragX = mouseX - 30
-	inv.dragY = mouseY - 30
+	inv.dragX = mouseX - 32
+	inv.dragY = mouseY - 32
 }
 
 func (inv *Inventory) endDragging() {
@@ -164,35 +158,48 @@ func (inv *Inventory) Draw(screen *ebiten.Image) {
 
 	// Draw the dragged item if there is one
 	if inv.draggedItem != nil {
-		// Create the dragged item visual
-		dragImg := ebiten.NewImage(60, 60)
-		dragImg.Fill(inv.draggedItem.Color)
-
-		// Set up drawing options
-		op := &ebiten.DrawImageOptions{}
-
-		// Make it more transparent when outside inventory bounds
-		if !inv.isWithinInventory(inv.dragX+30, inv.dragY+30) {
-			op.ColorScale.ScaleAlpha(0.4)
-		} else {
-			op.ColorScale.ScaleAlpha(0.7)
-		}
-
-		op.GeoM.Translate(inv.dragX, inv.dragY)
-
-		// Draw the dragged item
-		screen.DrawImage(dragImg, op)
-
-		// Draw the item name
-		ebui.NewLabel(
-			inv.draggedItem.Name,
-			ebui.WithSize(60, 20),
-			ebui.WithPosition(ebui.Position{X: inv.dragX, Y: inv.dragY + 20}),
-			ebui.WithJustify(ebui.JustifyCenter),
-		).Draw(screen)
+		inv.drawDraggedItem(screen)
 	}
 }
 
+func (inv *Inventory) drawDraggedItem(screen *ebiten.Image) {
+	// Draw the dragged item with a semi-transparent background
+	transparency := 0.7
+	if !inv.isWithinInventory(inv.dragX+32, inv.dragY+32) {
+		// If the item is outside the inventory bounds, increase transparency
+		transparency = 0.4
+	}
+
+	r, g, b, a := inv.draggedItem.Color.RGBA()
+	background := color.RGBA{
+		uint8(float64(r>>8) * transparency),
+		uint8(float64(g>>8) * transparency),
+		uint8(float64(b>>8) * transparency),
+		uint8(float64(a>>8) * transparency),
+	}
+
+	draggedSlot := ebui.NewLayoutContainer(
+		ebui.WithSize(64, 64),
+		ebui.WithPosition(ebui.Position{X: inv.dragX, Y: inv.dragY}),
+		ebui.WithBackground(background),
+	)
+
+	// Add the item name label
+	nameLbl := ebui.NewLabel(
+		inv.draggedItem.Name,
+		ebui.WithSize(64, 64),
+		ebui.WithPosition(ebui.Position{X: inv.dragX, Y: inv.dragY}),
+		ebui.WithJustify(ebui.JustifyCenter),
+	)
+	draggedSlot.AddChild(nameLbl)
+
+	// Draw the dragged item
+	draggedSlot.Draw(screen)
+}
+
+// InventorySlot is a custom component representing a slot in an inventory.
+// It embeds the LayoutContainer and BaseInteractive components and adds
+// inventory slot-specific functionality.
 type InventorySlot struct {
 	*ebui.LayoutContainer
 	*ebui.BaseInteractive
@@ -210,7 +217,7 @@ type Item struct {
 func NewInventorySlot(inv *Inventory) *InventorySlot {
 	slot := &InventorySlot{
 		LayoutContainer: ebui.NewLayoutContainer(
-			ebui.WithSize(60, 60),
+			ebui.WithSize(64, 64),
 			ebui.WithBackground(color.RGBA{200, 200, 200, 255}),
 			ebui.WithLayout(ebui.NewVerticalStackLayout(0, ebui.AlignCenter)),
 		),
@@ -220,7 +227,7 @@ func NewInventorySlot(inv *Inventory) *InventorySlot {
 
 	slot.label = ebui.NewLabel(
 		"",
-		ebui.WithSize(60, 20),
+		ebui.WithSize(64, 64),
 		ebui.WithJustify(ebui.JustifyCenter),
 	)
 	slot.AddChild(slot.label)
@@ -322,7 +329,7 @@ func (g *InventoryGame) Draw(screen *ebiten.Image) {
 }
 
 func (g *InventoryGame) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 604, 640
+	return 638, 656
 }
 
 func (g *InventoryGame) Update() error {
@@ -330,7 +337,7 @@ func (g *InventoryGame) Update() error {
 }
 
 func main() {
-	ebiten.SetWindowSize(604, 640)
+	ebiten.SetWindowSize(638, 656)
 	ebiten.SetWindowTitle("EBUI Inventory Example")
 
 	debug := flag.Bool("debug", false, "Enable debug mode")
