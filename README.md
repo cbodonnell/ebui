@@ -1,6 +1,6 @@
 # EBUI - Ebitengine UI Framework
 
-EBUI is a comprehensive UI framework for [Ebitengine](https://ebitengine.org/), providing a set of components and layouts for building game interfaces and tools.
+EBUI is a UI framework for [Ebitengine](https://ebitengine.org/), providing a set of components and layouts for building game interfaces and tools.
 
 ## Features
 
@@ -26,59 +26,81 @@ go get github.com/cbodonnell/ebui
 package main
 
 import (
-    "log"
-    "github.com/cbodonnell/ebui"
-    "github.com/hajimehoshi/ebiten/v2"
+	"image/color"
+	"log"
+
+	"github.com/cbodonnell/ebui"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Game struct {
-    ui *ebui.Manager
+	ui *ebui.Manager
 }
 
 func NewGame() *Game {
-    // Create a root container
-    root := ebui.NewBaseContainer(
-        ebui.WithSize(800, 600),
-    )
+	// Create a root container
+	root := ebui.NewLayoutContainer(
+		ebui.WithSize(800, 600),
+		ebui.WithLayout(ebui.NewVerticalStackLayout(0, ebui.AlignCenter)),
+	)
 
-    // Create a button
-    button := ebui.NewButton(
-        ebui.WithSize(120, 40),
-        ebui.WithLabelText("Click Me"),
-    )
-    button.SetClickHandler(func() {
-        println("Button clicked!")
-    })
+	// Create a label
+	label := ebui.NewLabel(
+		"Welcome to EBUI!",
+		ebui.WithSize(800, 40),
+		ebui.WithColor(color.White),
+	)
 
-    // Add button to root
-    root.AddChild(button)
+	// Create a button
+	button := ebui.NewButton(
+		ebui.WithSize(120, 40),
+		ebui.WithLabelText("Click Me"),
+		ebui.WithClickHandler(func() {
+			log.Println("Button clicked!")
+		}),
+	)
 
-    return &Game{
-        // Create a UI manager using the root component
-        ui: ebui.NewManager(root),
-    }
+	// Create a container to center the button
+	buttonContainer := ebui.NewLayoutContainer(
+		ebui.WithSize(800, 40),
+		ebui.WithLayout(ebui.NewHorizontalStackLayout(0, ebui.AlignCenter)),
+	)
+
+	// Add button to button container
+	buttonContainer.AddChild(button)
+
+	// Add label and button container to root
+	root.AddChild(label)
+	root.AddChild(buttonContainer)
+
+	return &Game{
+		// Create a UI manager using the root component
+		ui: ebui.NewManager(root),
+	}
 }
 
 func (g *Game) Update() error {
-    return g.ui.Update()
+	return g.ui.Update()
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-    g.ui.Draw(screen)
+	g.ui.Draw(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-    return 800, 600
+	return 800, 600
 }
 
 func main() {
-    ebiten.SetWindowSize(800, 600)
-    ebiten.SetWindowTitle("EBUI Example")
-    if err := ebiten.RunGame(NewGame()); err != nil {
-        log.Fatal(err)
-    }
+	ebiten.SetWindowSize(800, 600)
+	ebiten.SetWindowTitle("EBUI Example")
+	if err := ebiten.RunGame(NewGame()); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
+
+More comprehensive examples can be found in the [examples](examples) directory.
 
 ## Core Concepts
 
@@ -193,7 +215,7 @@ window := windowManager.CreateWindow(400, 300,
 
 ## Debugging
 
-EBUI includes a debug mode that visualizes component bounds and layout information:
+EBUI includes a debug mode that visualizes component bounds and layout information. Set the global `Debug` variable to `true` to enable debug mode:
 
 ```go
 ebui.Debug = true

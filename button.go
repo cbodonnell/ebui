@@ -38,6 +38,14 @@ func WithButtonColors(colors ButtonColors) ComponentOpt {
 	}
 }
 
+func WithClickHandler(handler func()) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Button); ok {
+			b.onClick = handler
+		}
+	}
+}
+
 func NewButton(opts ...ComponentOpt) *Button {
 	// Button layout is a vertical stack layout with no spacing and items aligned to the start
 	withLayout := WithLayout(NewVerticalStackLayout(0, AlignStart))
