@@ -127,6 +127,7 @@ func NewGame() *Game {
 
 func (g *Game) createInfoWindow() {
 	window := g.windows.CreateWindow(300, 200,
+		ebui.WithWindowPosition(100, 100),
 		ebui.WithWindowTitle("Welcome"),
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
@@ -145,6 +146,7 @@ func (g *Game) createInfoWindow() {
 
 func (g *Game) createStatsWindow() {
 	window := g.windows.CreateWindow(250, 180,
+		ebui.WithWindowPosition(100, 100),
 		ebui.WithWindowTitle("Statistics"),
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
@@ -185,6 +187,7 @@ func (g *Game) createRandomWindow() {
 	window := g.windows.CreateWindow(
 		200+rand.Float64()*100,
 		150+rand.Float64()*100,
+		ebui.WithWindowPosition(100, 100),
 		ebui.WithWindowTitle(title),
 		ebui.WithWindowColors(colorScheme),
 	)

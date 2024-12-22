@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"image/color"
 	"log"
 
@@ -149,6 +150,12 @@ func (g *LoginGame) Layout(outsideWidth, outsideHeight int) (screenWidth, screen
 func main() {
 	ebiten.SetWindowSize(400, 400)
 	ebiten.SetWindowTitle("EBUI Login Example")
+
+	debug := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+	if *debug {
+		ebui.Debug = true
+	}
 
 	if err := ebiten.RunGame(NewLoginGame()); err != nil {
 		log.Fatal(err)

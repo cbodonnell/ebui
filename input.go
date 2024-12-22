@@ -34,7 +34,7 @@ func findInteractiveComponentAt(root Component, x, y float64) (InteractiveCompon
 
 // findScrollableContainerAt returns both the target component and its path
 func findScrollableContainerAt(root Component, x, y float64) (InteractiveComponent, []InteractiveComponent) {
-	if component, path, ok := findComponentAtWithPath[*ScrollableContainer](root, x, y, nil); ok {
+	if component, path, ok := findComponentAtWithPath[Scrollable](root, x, y, nil); ok {
 		return component, path
 	}
 	return nil, nil

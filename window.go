@@ -33,7 +33,7 @@ type Window struct {
 	*BaseInteractive
 	*LayoutContainer
 	manager       *WindowManager
-	header        *BaseComponent
+	header        *LayoutContainer
 	content       *LayoutContainer
 	title         string
 	state         WindowState
@@ -75,6 +75,20 @@ func WithWindowColors(colors WindowColors) WindowOpt {
 func WithBorderWidth(width float64) WindowOpt {
 	return func(w *Window) {
 		w.borderWidth = width
+	}
+}
+
+// WithHeaderHeight sets the height of the window header
+func WithHeaderHeight(height float64) WindowOpt {
+	return func(w *Window) {
+		w.headerHeight = height
+	}
+}
+
+// WithPosition sets the window position
+func WithWindowPosition(x, y float64) WindowOpt {
+	return func(w *Window) {
+		w.SetPosition(Position{X: x, Y: y})
 	}
 }
 
@@ -174,10 +188,17 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 	}
 
 	// Create header and content area that fills the window
-	window.header = NewBaseComponent(
+	window.header = NewLayoutContainer(
 		WithSize(width, window.headerHeight),
 		WithBackground(window.colors.Header),
+		WithLayout(NewVerticalStackLayout(0, AlignStart)),
 	)
+	titleLabel := NewLabel(
+		window.title,
+		WithSize(width, window.headerHeight),
+		WithJustify(JustifyCenter),
+	)
+	window.header.AddChild(titleLabel)
 	window.content = NewLayoutContainer(
 		WithSize(width, height-window.headerHeight),
 		WithBackground(window.colors.Background),
@@ -187,9 +208,10 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 	window.LayoutContainer.AddChild(window.content)
 
 	window.registerEventListeners()
+	// ensure window is positioned absolutely
 	window.SetPosition(Position{
-		X:        100,
-		Y:        100,
+		X:        window.position.X,
+		Y:        window.position.X,
 		ZIndex:   wm.nextZIndex,
 		Relative: false,
 	})

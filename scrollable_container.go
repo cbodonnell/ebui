@@ -8,7 +8,15 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var _ EventBoundary = &ScrollableContainer{}
+var _ Scrollable = &ScrollableContainer{}
+
+type Scrollable interface {
+	Container
+	Interactive
+	EventBoundary
+	GetScrollOffset() Position
+	SetScrollOffset(offset Position)
+}
 
 type ScrollableContainer struct {
 	*BaseInteractive
@@ -40,8 +48,9 @@ func (sc *ScrollableContainer) registerEventListeners() {
 	// Handle mouse wheel events
 	sc.AddEventListener(Wheel, func(e *Event) {
 		wheelY := e.WheelDeltaY
-		sc.scrollOffset.Y -= wheelY * 10
-		sc.clampScrollOffset()
+		scrollOffset := sc.GetScrollOffset()
+		scrollOffset.Y -= wheelY * 10
+		sc.SetScrollOffset(scrollOffset)
 	})
 
 	// Handle scroll bar dragging
@@ -64,10 +73,20 @@ func (sc *ScrollableContainer) registerEventListeners() {
 			viewportSize := sc.GetSize()
 			scrollRatio := (contentSize.Height - viewportSize.Height) / (viewportSize.Height - sc.getScrollThumbHeight())
 
-			sc.scrollOffset.Y = sc.dragStartOffset + deltaY*scrollRatio
-			sc.clampScrollOffset()
+			scrollOffset := sc.GetScrollOffset()
+			scrollOffset.Y = sc.dragStartOffset + deltaY*scrollRatio
+			sc.SetScrollOffset(scrollOffset)
 		}
 	})
+}
+
+func (sc *ScrollableContainer) GetScrollOffset() Position {
+	return sc.scrollOffset
+}
+
+func (sc *ScrollableContainer) SetScrollOffset(offset Position) {
+	sc.scrollOffset = offset
+	sc.clampScrollOffset()
 }
 
 func (sc *ScrollableContainer) AddChild(child Component) {
