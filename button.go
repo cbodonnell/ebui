@@ -2,24 +2,31 @@ package ebui
 
 import (
 	"image/color"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
-var _ InteractiveComponent = &Button{}
+var _ FocusableComponent = &Button{}
 
 type Button struct {
 	*LayoutContainer
-	*BaseInteractive
+	*BaseFocusable
 	label     *Label
 	colors    ButtonColors
 	isHovered bool
 	isPressed bool
+	isFocused bool
 	onClick   func()
+	focusable bool
+	tabIndex  int
 }
 
 type ButtonColors struct {
-	Default color.Color
-	Hovered color.Color
-	Pressed color.Color
+	Default     color.Color
+	Hovered     color.Color
+	Pressed     color.Color
+	FocusBorder color.Color
 }
 
 func WithLabelText(text string) ComponentOpt {
@@ -53,13 +60,16 @@ func NewButton(opts ...ComponentOpt) *Button {
 		LayoutContainer: NewLayoutContainer(
 			append([]ComponentOpt{withLayout}, opts...)...,
 		),
-		BaseInteractive: NewBaseInteractive(),
-		colors: ButtonColors{ // Default colors
-			Default: color.RGBA{200, 200, 200, 255},
-			Hovered: color.RGBA{220, 220, 220, 255},
-			Pressed: color.RGBA{170, 170, 170, 255},
+		BaseFocusable: NewBaseFocusable(),
+		colors: ButtonColors{
+			Default:     color.RGBA{200, 200, 200, 255}, // Light gray
+			Hovered:     color.RGBA{220, 220, 220, 255}, // Light gray
+			Pressed:     color.RGBA{170, 170, 170, 255}, // Dark gray
+			FocusBorder: color.Black,
 		},
-		onClick: func() {}, // Default click handler
+		onClick:   func() {},
+		focusable: true,
+		tabIndex:  0,
 	}
 
 	// Button label fills the button's width and is centered
@@ -99,6 +109,14 @@ func (b *Button) registerEventListeners() {
 		}
 		b.isPressed = false
 	})
+
+	b.AddEventListener(Focus, func(e *Event) {
+		b.isFocused = true
+	})
+
+	b.AddEventListener(Blur, func(e *Event) {
+		b.isFocused = false
+	})
 }
 
 func (b *Button) SetClickHandler(handler func()) {
@@ -114,6 +132,24 @@ func (b *Button) SetLabel(text string) {
 }
 
 func (b *Button) Update() error {
+	b.handleInput()
+	b.updateAppearance()
+	return b.LayoutContainer.Update()
+}
+
+func (b *Button) handleInput() {
+	if !b.isFocused {
+		return
+	}
+
+	enterPressed := inpututil.IsKeyJustPressed(ebiten.KeyEnter)
+	spacePressed := inpututil.IsKeyJustPressed(ebiten.KeySpace)
+	if enterPressed || spacePressed {
+		b.onClick()
+	}
+}
+
+func (b *Button) updateAppearance() {
 	var bgColor color.Color
 	switch {
 	case b.isPressed:
@@ -124,5 +160,18 @@ func (b *Button) Update() error {
 		bgColor = b.colors.Default
 	}
 	b.LayoutContainer.SetBackground(bgColor)
-	return b.LayoutContainer.Update()
+}
+
+func (b *Button) Draw(screen *ebiten.Image) {
+	if b.isFocused {
+		// Draw the focus border 1px
+		pos := b.GetAbsolutePosition()
+		size := b.GetSize()
+		bg := ebiten.NewImage(int(size.Width+2), int(size.Height+2))
+		bg.Fill(b.colors.FocusBorder)
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(pos.X-1, pos.Y-1)
+		screen.DrawImage(bg, op)
+	}
+	b.LayoutContainer.Draw(screen)
 }

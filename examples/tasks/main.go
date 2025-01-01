@@ -47,13 +47,12 @@ func NewGame() *Game {
 		ebui.WithSize(200, 30),
 		ebui.WithTextInputColors(ebui.DefaultTextInputColors()),
 		ebui.WithInitialText("Hello"),
-		ebui.WithOnChange(func(text string) {
+		ebui.WithChangeHandler(func(text string) {
 			fmt.Printf("Text changed: %s\n", text)
 		}),
-		ebui.WithOnSubmit(func(text string) {
+		ebui.WithSubmitHandler(func(text string) {
 			fmt.Printf("Text submitted: %s\n", text)
 		}),
-		// ebui.WithPasswordMasking(),
 	)
 
 	// Task management buttons
@@ -217,21 +216,24 @@ func (g *Game) addItem() {
 	buttonColors := []ebui.ButtonColors{
 		{
 			// green default, light green hovered, dark green pressed
-			Default: color.RGBA{144, 238, 144, 255},
-			Hovered: color.RGBA{152, 251, 152, 255},
-			Pressed: color.RGBA{50, 205, 50, 255},
+			Default:     color.RGBA{144, 238, 144, 255},
+			Hovered:     color.RGBA{152, 251, 152, 255},
+			Pressed:     color.RGBA{50, 205, 50, 255},
+			FocusBorder: color.Black,
 		},
 		{
 			// orange default, light orange hovered, dark orange pressed
-			Default: color.RGBA{255, 218, 185, 255},
-			Hovered: color.RGBA{255, 228, 196, 255},
-			Pressed: color.RGBA{255, 165, 0, 255},
+			Default:     color.RGBA{255, 218, 185, 255},
+			Hovered:     color.RGBA{255, 228, 196, 255},
+			Pressed:     color.RGBA{255, 165, 0, 255},
+			FocusBorder: color.Black,
 		},
 		{
 			// pink default, light pink hovered, dark pink pressed
-			Default: color.RGBA{255, 182, 193, 255},
-			Hovered: color.RGBA{255, 192, 203, 255},
-			Pressed: color.RGBA{255, 105, 180, 255},
+			Default:     color.RGBA{255, 182, 193, 255},
+			Hovered:     color.RGBA{255, 192, 203, 255},
+			Pressed:     color.RGBA{255, 105, 180, 255},
+			FocusBorder: color.Black,
 		},
 	}[i]
 
@@ -279,9 +281,10 @@ func (g *Game) addItem() {
 		ebui.WithSize(100, 40),
 		ebui.WithLabelText("Delete"),
 		ebui.WithButtonColors(ebui.ButtonColors{
-			Default: color.RGBA{255, 99, 71, 255}, // Tomato
-			Hovered: color.RGBA{255, 69, 0, 255},  // OrangeRed
-			Pressed: color.RGBA{178, 34, 34, 255}, // FireBrick
+			Default:     color.RGBA{255, 99, 71, 255}, // Tomato
+			Hovered:     color.RGBA{255, 69, 0, 255},  // OrangeRed
+			Pressed:     color.RGBA{178, 34, 34, 255}, // FireBrick
+			FocusBorder: color.Black,
 		}),
 	)
 	deleteBtn.SetClickHandler(func() {
