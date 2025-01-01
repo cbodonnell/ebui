@@ -198,11 +198,11 @@ func (inv *Inventory) drawDraggedItem(screen *ebiten.Image) {
 }
 
 // InventorySlot is a custom component representing a slot in an inventory.
-// It embeds the LayoutContainer and BaseInteractive components and adds
+// It embeds the LayoutContainer and BaseFocusable components and adds
 // inventory slot-specific functionality.
 type InventorySlot struct {
 	*ebui.LayoutContainer
-	*ebui.BaseInteractive
+	*ebui.BaseFocusable
 	item      *Item
 	label     *ebui.Label
 	isHovered bool
@@ -221,8 +221,8 @@ func NewInventorySlot(inv *Inventory) *InventorySlot {
 			ebui.WithBackground(color.RGBA{200, 200, 200, 255}),
 			ebui.WithLayout(ebui.NewVerticalStackLayout(0, ebui.AlignCenter)),
 		),
-		BaseInteractive: ebui.NewBaseInteractive(),
-		inv:             inv,
+		BaseFocusable: ebui.NewBaseFocusable(),
+		inv:           inv,
 	}
 
 	slot.label = ebui.NewLabel(
@@ -279,10 +279,6 @@ func (s *InventorySlot) registerEventListeners() {
 			}
 		}
 	})
-}
-
-func (s *InventorySlot) HandleEvent(event *ebui.Event) {
-	s.BaseInteractive.HandleEvent(event)
 }
 
 func (s *InventorySlot) Update() error {

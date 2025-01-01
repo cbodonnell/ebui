@@ -8,8 +8,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var _ Scrollable = &ScrollableContainer{}
-
 type Scrollable interface {
 	Container
 	Interactive
@@ -18,19 +16,22 @@ type Scrollable interface {
 	SetScrollOffset(offset Position)
 }
 
+var _ Scrollable = &ScrollableContainer{}
+
 type ScrollableContainer struct {
-	*BaseInteractive
+	*BaseFocusable
 	*LayoutContainer
 	scrollOffset    Position
 	isDraggingThumb bool
 	dragStartY      float64
 	dragStartOffset float64
 	scrollBarWidth  float64
+	isFocused       bool
 }
 
 func NewScrollableContainer(opts ...ComponentOpt) *ScrollableContainer {
 	sc := &ScrollableContainer{
-		BaseInteractive: NewBaseInteractive(),
+		BaseFocusable:   NewBaseFocusable(),
 		LayoutContainer: NewLayoutContainer(opts...),
 		scrollBarWidth:  12, // Width of scroll bar in pixels
 	}
@@ -78,6 +79,14 @@ func (sc *ScrollableContainer) registerEventListeners() {
 			sc.SetScrollOffset(scrollOffset)
 		}
 	})
+
+	sc.AddEventListener(Focus, func(e *Event) {
+		sc.isFocused = true
+	})
+
+	sc.AddEventListener(Blur, func(e *Event) {
+		sc.isFocused = false
+	})
 }
 
 func (sc *ScrollableContainer) GetScrollOffset() Position {
@@ -100,6 +109,8 @@ func (sc *ScrollableContainer) RemoveChild(child Component) {
 }
 
 func (sc *ScrollableContainer) Update() error {
+	sc.handleInput()
+
 	if sc.layout != nil {
 		sc.layout.ArrangeChildren(sc)
 	}
@@ -112,6 +123,47 @@ func (sc *ScrollableContainer) Update() error {
 	}
 
 	return sc.BaseContainer.Update()
+}
+
+func (sc *ScrollableContainer) handleInput() {
+	if !sc.isFocused {
+		return
+	}
+
+	scrollAmount := float64(20)
+	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
+	if shiftPressed {
+		scrollAmount = 100
+	}
+
+	switch {
+	case ebiten.IsKeyPressed(ebiten.KeyArrowUp):
+		scrollOffset := sc.GetScrollOffset()
+		scrollOffset.Y -= scrollAmount
+		sc.SetScrollOffset(scrollOffset)
+	case ebiten.IsKeyPressed(ebiten.KeyArrowDown):
+		scrollOffset := sc.GetScrollOffset()
+		scrollOffset.Y += scrollAmount
+		sc.SetScrollOffset(scrollOffset)
+	case ebiten.IsKeyPressed(ebiten.KeyPageUp):
+		scrollOffset := sc.GetScrollOffset()
+		scrollOffset.Y -= sc.GetSize().Height
+		sc.SetScrollOffset(scrollOffset)
+	case ebiten.IsKeyPressed(ebiten.KeyPageDown):
+		scrollOffset := sc.GetScrollOffset()
+		scrollOffset.Y += sc.GetSize().Height
+		sc.SetScrollOffset(scrollOffset)
+	case ebiten.IsKeyPressed(ebiten.KeyHome):
+		scrollOffset := sc.GetScrollOffset()
+		scrollOffset.Y = 0
+		sc.SetScrollOffset(scrollOffset)
+	case ebiten.IsKeyPressed(ebiten.KeyEnd):
+		scrollOffset := sc.GetScrollOffset()
+		contentSize := sc.layout.GetMinSize(sc)
+		viewportSize := sc.GetSize()
+		scrollOffset.Y = contentSize.Height - viewportSize.Height
+		sc.SetScrollOffset(scrollOffset)
+	}
 }
 
 func (sc *ScrollableContainer) Draw(screen *ebiten.Image) {

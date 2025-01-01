@@ -7,20 +7,23 @@ import (
 )
 
 type InputManager struct {
-	lastHoverTarget  InteractiveComponent
-	dragSource       InteractiveComponent
-	focusedComponent InteractiveComponent
-	isDragging       bool
-	lastMouseX       float64
-	lastMouseY       float64
-	lastUpdateTime   int64
-	buttonStates     map[ebiten.MouseButton]bool
+	lastHoverTarget InteractiveComponent
+	dragSource      InteractiveComponent
+	isDragging      bool
+	lastMouseX      float64
+	lastMouseY      float64
+	lastUpdateTime  int64
+	buttonStates    map[ebiten.MouseButton]bool
+	focusManager    *FocusManager
+	tabRepeatStart  time.Time
+	tabRepeatLast   time.Time
 }
 
 func NewInputManager() *InputManager {
 	return &InputManager{
 		lastUpdateTime: time.Now().UnixNano(),
 		buttonStates:   make(map[ebiten.MouseButton]bool),
+		focusManager:   NewFocusManager(),
 	}
 }
 
@@ -115,6 +118,11 @@ func (im *InputManager) dispatchEvent(event *Event) bool {
 // It handles mouse button events, mouse movement, wheel events, and drag events.
 // The root component is used as the starting point for event propagation.
 func (im *InputManager) Update(root Component) {
+	im.handleMouseInput(root)
+	im.handleKeyboardInput(root)
+}
+
+func (im *InputManager) handleMouseInput(root Component) {
 	currentTime := time.Now().UnixNano()
 	x, y := ebiten.CursorPosition()
 	fx, fy := float64(x), float64(y)
@@ -135,7 +143,7 @@ func (im *InputManager) Update(root Component) {
 		Path:        path,
 	}
 
-	// Handle pointer input (mouse/touch)
+	// Handle mouse buttons
 	for _, btn := range []ebiten.MouseButton{
 		ebiten.MouseButtonLeft,
 		ebiten.MouseButtonRight,
@@ -154,26 +162,10 @@ func (im *InputManager) Update(root Component) {
 
 				// Handle focus change on left click
 				if btn == ebiten.MouseButtonLeft {
-					if target != im.focusedComponent {
-						// Send blur event if there was a focused component
-						if im.focusedComponent != nil {
-							blurEvt := baseEvent
-							blurEvt.Type = Blur
-							blurEvt.Target = im.focusedComponent
-							blurEvt.RelatedTarget = target
-							im.dispatchEvent(&blurEvt)
-						}
-
-						// Send focus event to new target
-						if target != nil {
-							focusEvt := baseEvent
-							focusEvt.Type = Focus
-							focusEvt.Target = target
-							focusEvt.RelatedTarget = im.focusedComponent
-							im.dispatchEvent(&focusEvt)
-						}
-
-						im.focusedComponent = target
+					if focusable, ok := target.(FocusableComponent); ok {
+						im.focusManager.SetFocus(focusable)
+					} else {
+						im.focusManager.SetFocus(nil)
 					}
 				}
 			} else {
@@ -271,4 +263,47 @@ func (im *InputManager) Update(root Component) {
 	im.lastMouseX = fx
 	im.lastMouseY = fy
 	im.lastUpdateTime = currentTime
+}
+
+func (im *InputManager) handleKeyboardInput(root Component) {
+	escPressed := ebiten.IsKeyPressed(ebiten.KeyEscape)
+	if escPressed {
+		im.focusManager.SetFocus(nil)
+	}
+
+	// Handle Tab key for focus navigation
+	tabPressed := ebiten.IsKeyPressed(ebiten.KeyTab)
+	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
+
+	if !tabPressed {
+		im.tabRepeatStart = time.Time{}
+		im.tabRepeatLast = time.Time{}
+		return
+	}
+
+	now := time.Now()
+	initialDelay := 500 * time.Millisecond
+	repeatDelay := 50 * time.Millisecond
+
+	shouldRepeat := time.Since(im.tabRepeatStart) >= initialDelay &&
+		time.Since(im.tabRepeatLast) >= repeatDelay
+
+	if !shouldRepeat {
+		return
+	}
+
+	// Refresh focusable components
+	im.focusManager.RefreshFocusableComponents(root)
+
+	if im.focusManager.GetCurrentFocus() == nil && len(im.focusManager.focusableComponents) > 0 {
+		// Focus first component if nothing focused
+		im.focusManager.SetFocus(im.focusManager.focusableComponents[0])
+	} else {
+		im.focusManager.HandleTab(shiftPressed)
+	}
+
+	if im.tabRepeatStart.IsZero() {
+		im.tabRepeatStart = now
+	}
+	im.tabRepeatLast = now
 }

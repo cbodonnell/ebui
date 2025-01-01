@@ -53,11 +53,13 @@ func NewLoginGame() *LoginGame {
 	game.usernameInput = ebui.NewTextInput(
 		ebui.WithSize(260, 30),
 		ebui.WithTextInputColors(ebui.TextInputColors{
-			Text:       color.Black,
-			Background: color.White,
-			Cursor:     color.Black,
-			Selection:  color.RGBA{100, 149, 237, 127},
+			Text:        color.Black,
+			Background:  color.White,
+			Cursor:      color.Black,
+			Selection:   color.RGBA{100, 149, 237, 127},
+			FocusBorder: color.Black,
 		}),
+		ebui.WithSubmitHandler(func(s string) { game.handleLogin() }),
 	)
 
 	// Password input
@@ -71,11 +73,13 @@ func NewLoginGame() *LoginGame {
 		ebui.WithSize(260, 30),
 		ebui.WithPasswordMasking(),
 		ebui.WithTextInputColors(ebui.TextInputColors{
-			Text:       color.Black,
-			Background: color.White,
-			Cursor:     color.Black,
-			Selection:  color.RGBA{100, 149, 237, 127},
+			Text:        color.Black,
+			Background:  color.White,
+			Cursor:      color.Black,
+			Selection:   color.RGBA{100, 149, 237, 127},
+			FocusBorder: color.Black,
 		}),
+		ebui.WithSubmitHandler(func(s string) { game.handleLogin() }),
 	)
 
 	// Login button
@@ -83,10 +87,12 @@ func NewLoginGame() *LoginGame {
 		ebui.WithSize(260, 40),
 		ebui.WithLabelText("Login"),
 		ebui.WithButtonColors(ebui.ButtonColors{
-			Default: color.RGBA{46, 139, 87, 255},  // Sea Green
-			Hovered: color.RGBA{60, 179, 113, 255}, // Medium Sea Green
-			Pressed: color.RGBA{32, 97, 61, 255},   // Dark Sea Green
+			Default:     color.RGBA{46, 139, 87, 255},  // Sea Green
+			Hovered:     color.RGBA{60, 179, 113, 255}, // Medium Sea Green
+			Pressed:     color.RGBA{32, 97, 61, 255},   // Dark Sea Green
+			FocusBorder: color.Black,
 		}),
+		ebui.WithClickHandler(game.handleLogin),
 	)
 
 	// Status label for showing login results
@@ -96,8 +102,6 @@ func NewLoginGame() *LoginGame {
 		ebui.WithJustify(ebui.JustifyCenter),
 		ebui.WithColor(color.RGBA{255, 0, 0, 255}), // Red for errors
 	)
-
-	loginBtn.SetClickHandler(game.handleLogin)
 
 	// Add all components to form container
 	formContainer.AddChild(titleLabel)

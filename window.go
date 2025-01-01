@@ -30,7 +30,7 @@ func DefaultWindowColors() WindowColors {
 }
 
 type Window struct {
-	*BaseInteractive
+	*BaseFocusable
 	*LayoutContainer
 	manager       *WindowManager
 	header        *LayoutContainer
@@ -154,75 +154,6 @@ func (w *Window) clampToScreen() {
 	w.SetPosition(pos)
 }
 
-type WindowManager struct {
-	*ZIndexedContainer
-	activeWindow *Window
-	nextZIndex   int
-}
-
-func NewWindowManager(opts ...ComponentOpt) *WindowManager {
-	wm := &WindowManager{
-		ZIndexedContainer: NewZIndexedContainer(opts...),
-		nextZIndex:        1,
-	}
-	return wm
-}
-
-func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) *Window {
-	// Create the window
-	window := &Window{
-		BaseInteractive: NewBaseInteractive(),
-		LayoutContainer: NewLayoutContainer(
-			WithSize(width, height),
-			WithLayout(NewVerticalStackLayout(0, AlignStart)),
-		),
-		manager:      wm,
-		headerHeight: 30, // Default header height
-		colors:       DefaultWindowColors(),
-		borderWidth:  1, // Default border width
-		state:        WindowStateNormal,
-	}
-
-	for _, opt := range opts {
-		opt(window)
-	}
-
-	// Create header and content area that fills the window
-	window.header = NewLayoutContainer(
-		WithSize(width, window.headerHeight),
-		WithBackground(window.colors.Header),
-		WithLayout(NewVerticalStackLayout(0, AlignStart)),
-	)
-	titleLabel := NewLabel(
-		window.title,
-		WithSize(width, window.headerHeight),
-		WithJustify(JustifyCenter),
-	)
-	window.header.AddChild(titleLabel)
-	window.content = NewLayoutContainer(
-		WithSize(width, height-window.headerHeight),
-		WithBackground(window.colors.Background),
-		WithLayout(NewVerticalStackLayout(10, AlignStart)),
-	)
-	window.LayoutContainer.AddChild(window.header)
-	window.LayoutContainer.AddChild(window.content)
-
-	window.registerEventListeners()
-	// ensure window is positioned absolutely
-	window.SetPosition(Position{
-		X:        window.position.X,
-		Y:        window.position.X,
-		ZIndex:   wm.nextZIndex,
-		Relative: false,
-	})
-	wm.nextZIndex++
-
-	wm.AddChild(window)
-	wm.SetActiveWindow(window)
-
-	return window
-}
-
 func (w *Window) registerEventListeners() {
 	w.AddEventListener(DragStart, func(e *Event) {
 		// Always activate window on any mouse down within the window
@@ -262,6 +193,76 @@ func (w *Window) isOverHeader(x, y float64) bool {
 		x <= absPos.X+w.GetSize().Width &&
 		y >= absPos.Y &&
 		y <= absPos.Y+w.headerHeight
+}
+
+type WindowManager struct {
+	*ZIndexedContainer
+	activeWindow *Window
+	nextZIndex   int
+}
+
+func NewWindowManager(opts ...ComponentOpt) *WindowManager {
+	wm := &WindowManager{
+		ZIndexedContainer: NewZIndexedContainer(opts...),
+		nextZIndex:        1,
+	}
+	return wm
+}
+
+func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) *Window {
+	window := &Window{
+		BaseFocusable: NewBaseFocusable(),
+		LayoutContainer: NewLayoutContainer(
+			WithSize(width, height),
+			WithLayout(NewVerticalStackLayout(0, AlignStart)),
+		),
+		manager:      wm,
+		headerHeight: 30,
+		colors:       DefaultWindowColors(),
+		borderWidth:  1,
+		state:        WindowStateNormal,
+	}
+
+	for _, opt := range opts {
+		opt(window)
+	}
+
+	window.header = NewLayoutContainer(
+		WithSize(width, window.headerHeight),
+		WithBackground(window.colors.Header),
+		WithLayout(NewVerticalStackLayout(0, AlignStart)),
+	)
+
+	titleLabel := NewLabel(
+		window.title,
+		WithSize(width, window.headerHeight),
+		WithJustify(JustifyCenter),
+	)
+	window.header.AddChild(titleLabel)
+
+	window.content = NewLayoutContainer(
+		WithSize(width, height-window.headerHeight),
+		WithBackground(window.colors.Background),
+		WithLayout(NewVerticalStackLayout(10, AlignStart)),
+	)
+
+	window.LayoutContainer.AddChild(window.header)
+	window.LayoutContainer.AddChild(window.content)
+
+	window.registerEventListeners()
+
+	window.SetPosition(Position{
+		X:        window.position.X,
+		Y:        window.position.Y,
+		ZIndex:   wm.nextZIndex,
+		Relative: false,
+	})
+	wm.nextZIndex++
+
+	wm.AddChild(window)
+	wm.SetActiveWindow(window)
+
+	return window
 }
 
 func (wm *WindowManager) SetActiveWindow(window *Window) {
