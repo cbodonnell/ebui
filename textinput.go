@@ -19,6 +19,13 @@ var _ FocusableComponent = &TextInput{}
 var clipboardDisabled bool
 
 func init() {
+	defer func() {
+		if r := recover(); r != nil {
+			println("Warning: Recovered from panic during clipboard initialization:", r)
+			clipboardDisabled = true
+		}
+	}()
+
 	err := clipboard.Init()
 	if err != nil {
 		println("Warning: Failed to initialize clipboard:", err)
