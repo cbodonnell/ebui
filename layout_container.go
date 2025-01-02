@@ -30,3 +30,17 @@ func (c *LayoutContainer) Update() error {
 	}
 	return c.BaseContainer.Update()
 }
+
+func (c *LayoutContainer) AddChild(child Component) {
+	c.BaseContainer.AddChild(child)
+	if c.layout != nil {
+		c.layout.ArrangeChildren(c)
+	}
+}
+
+func (c *LayoutContainer) RemoveChild(child Component) {
+	c.BaseContainer.RemoveChild(child)
+	if c.layout != nil {
+		c.layout.ArrangeChildren(c)
+	}
+}
