@@ -244,9 +244,7 @@ func (sc *ScrollableContainer) drawScrollBar(screen *ebiten.Image) {
 	size := sc.GetSize()
 
 	// Draw track
-	trackImg := ebiten.NewImage(int(sc.scrollBarWidth), int(size.Height))
-	trackImg.Fill(color.RGBA{200, 200, 200, 255})
-
+	trackImg := GetCache().ImageWithColor(int(sc.scrollBarWidth), int(size.Height), color.RGBA{200, 200, 200, 255})
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y)
 	screen.DrawImage(trackImg, op)
@@ -255,13 +253,12 @@ func (sc *ScrollableContainer) drawScrollBar(screen *ebiten.Image) {
 	thumbHeight := sc.getScrollThumbHeight()
 	thumbY := sc.getScrollThumbPosition()
 
-	thumbImg := ebiten.NewImage(int(sc.scrollBarWidth), int(thumbHeight))
+	thumbColor := color.RGBA{160, 160, 160, 255}
 	if sc.isDraggingThumb {
-		thumbImg.Fill(color.RGBA{120, 120, 120, 255}) // Darker when dragging
-	} else {
-		thumbImg.Fill(color.RGBA{160, 160, 160, 255})
+		thumbColor = color.RGBA{120, 120, 120, 255}
 	}
 
+	thumbImg := GetCache().ImageWithColor(int(sc.scrollBarWidth), int(thumbHeight), thumbColor)
 	op = &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y+thumbY)
 	screen.DrawImage(thumbImg, op)

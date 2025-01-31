@@ -125,8 +125,7 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	// Draw the window border 1px
 	pos := w.GetAbsolutePosition()
 	size := w.GetSize()
-	bg := ebiten.NewImage(int(size.Width+2), int(size.Height+2))
-	bg.Fill(w.colors.Border)
+	bg := GetCache().ImageWithColor(int(size.Width+2), int(size.Height+2), w.colors.Border)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X-1, pos.Y-1)
 	screen.DrawImage(bg, op)
