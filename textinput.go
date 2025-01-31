@@ -217,8 +217,10 @@ func (t *TextInput) Update() error {
 }
 
 func (t *TextInput) handleKeyboardInput() {
-	t.handleCharacterInput()
-	t.handleSpecialKeys()
+	handled := t.handleSpecialKeys()
+	if !handled {
+		t.handleCharacterInput()
+	}
 	t.handleKeyRepeat()
 }
 
@@ -247,36 +249,16 @@ func (t *TextInput) handleCharacterInput() {
 	}
 }
 
-func (t *TextInput) handleSpecialKeys() {
+func (t *TextInput) handleSpecialKeys() bool {
 	ctrlPressed := ebiten.IsKeyPressed(ebiten.KeyControl) || ebiten.IsKeyPressed(ebiten.KeyMeta)
 	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
 
-	// Handle keyboard shortcuts only if it's not an arrow key
-	if ctrlPressed {
-		shortcuts := map[ebiten.Key]func(){
-			ebiten.KeyA: t.selectAll,
-			ebiten.KeyX: t.handleCut,
-			ebiten.KeyC: t.handleCopy,
-			ebiten.KeyV: t.handlePaste,
-		}
-
-		for key, handler := range shortcuts {
-			if ebiten.IsKeyPressed(key) {
-				if t.repeatKey != key {
-					handler()
-					t.repeatKey = key
-					t.repeatStart = time.Now()
-					t.lastRepeat = time.Now()
-				}
-				return
-			} else if t.repeatKey == key {
-				t.repeatKey = -1
-			}
-		}
-	}
-
 	// Define the keys we want to handle
 	keys := []ebiten.Key{
+		ebiten.KeyA,
+		ebiten.KeyX,
+		ebiten.KeyC,
+		ebiten.KeyV,
 		ebiten.KeyLeft,
 		ebiten.KeyRight,
 		ebiten.KeyBackspace,
@@ -286,18 +268,21 @@ func (t *TextInput) handleSpecialKeys() {
 		ebiten.KeyEnd,
 	}
 
+	handled := false
 	for _, key := range keys {
 		if ebiten.IsKeyPressed(key) {
 			if t.repeatKey != key {
 				t.repeatKey = key
 				t.repeatStart = time.Now()
 				t.lastRepeat = time.Now()
-				t.handleKey(key, ctrlPressed, shiftPressed)
+				handled = t.handleKey(key, ctrlPressed, shiftPressed)
 			}
 		} else if t.repeatKey == key {
 			t.repeatKey = -1
 		}
 	}
+
+	return handled
 }
 
 func (t *TextInput) handleKeyRepeat() {
@@ -336,29 +321,50 @@ func (t *TextInput) handleKeyRepeat() {
 	t.lastRepeat = now
 }
 
-func (t *TextInput) handleKey(key ebiten.Key, ctrlPressed, shiftPressed bool) {
+func (t *TextInput) handleKey(key ebiten.Key, ctrlPressed, shiftPressed bool) bool {
+	handled := false
 	switch key {
+	case ebiten.KeyA, ebiten.KeyX, ebiten.KeyC, ebiten.KeyV:
+		if ctrlPressed {
+			shortcuts := map[ebiten.Key]func(){
+				ebiten.KeyA: t.selectAll,
+				ebiten.KeyX: t.handleCut,
+				ebiten.KeyC: t.handleCopy,
+				ebiten.KeyV: t.handlePaste,
+			}
+			shortcuts[key]()
+			handled = true
+		}
 	case ebiten.KeyLeft:
 		t.handleLeftKey(ctrlPressed, shiftPressed)
+		handled = true
 	case ebiten.KeyRight:
 		t.handleRightKey(ctrlPressed, shiftPressed)
+		handled = true
 	case ebiten.KeyBackspace:
 		t.handleBackspace()
+		handled = true
 	case ebiten.KeyDelete:
 		t.handleDelete()
+		handled = true
 	case ebiten.KeyEnter:
 		if t.onSubmit != nil {
 			t.onSubmit(string(t.text))
+			handled = true
 		}
 	case ebiten.KeyHome:
 		t.handleHome(shiftPressed)
+		handled = true
 	case ebiten.KeyEnd:
 		t.handleEnd(shiftPressed)
+		handled = true
 	}
 
 	t.ensureCursorVisible()
 	t.showCursor = true
 	t.lastBlink = time.Now()
+
+	return handled
 }
 
 func (t *TextInput) Draw(screen *ebiten.Image) {
