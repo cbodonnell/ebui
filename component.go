@@ -160,8 +160,7 @@ func (b *BaseComponent) drawBackground(screen *ebiten.Image) {
 	}
 	pos := b.GetAbsolutePosition()
 	size := b.GetSize()
-	bg := ebiten.NewImage(int(size.Width), int(size.Height))
-	bg.Fill(b.background)
+	bg := GetCache().ImageWithColor(int(size.Width), int(size.Height), b.background)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X, pos.Y)
 	screen.DrawImage(bg, op)
@@ -201,8 +200,7 @@ func (b *BaseComponent) drawDebug(screen *ebiten.Image) {
 	padding := b.GetPadding()
 
 	// Draw component bounds
-	debugRect := ebiten.NewImage(int(size.Width), int(size.Height))
-	debugRect.Fill(debugColor)
+	debugRect := GetCache().ImageWithColor(int(size.Width), int(size.Height), debugColor)
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X, pos.Y)
@@ -210,15 +208,19 @@ func (b *BaseComponent) drawDebug(screen *ebiten.Image) {
 
 	// Draw padding bounds with even more transparent color
 	if padding.Top > 0 || padding.Right > 0 || padding.Bottom > 0 || padding.Left > 0 {
-		paddingRect := ebiten.NewImage(
-			int(size.Width-padding.Left-padding.Right),
-			int(size.Height-padding.Top-padding.Bottom),
-		)
-		paddingRect.Fill(color.RGBA{255, 255, 255, 15}) // Very transparent white
+		paddingWidth := int(size.Width - padding.Left - padding.Right)
+		paddingHeight := int(size.Height - padding.Top - padding.Bottom)
+		if paddingWidth > 0 && paddingHeight > 0 {
+			paddingRect := GetCache().ImageWithColor(
+				paddingWidth,
+				paddingHeight,
+				color.RGBA{255, 255, 255, 15},
+			)
 
-		op = &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(pos.X+padding.Left, pos.Y+padding.Top)
-		screen.DrawImage(paddingRect, op)
+			op = &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(pos.X+padding.Left, pos.Y+padding.Top)
+			screen.DrawImage(paddingRect, op)
+		}
 	}
 
 	positionType := "Absolute"

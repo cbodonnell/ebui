@@ -167,11 +167,10 @@ func (b *Button) Draw(screen *ebiten.Image) {
 		// Draw the focus border 1px
 		pos := b.GetAbsolutePosition()
 		size := b.GetSize()
-		bg := ebiten.NewImage(int(size.Width+2), int(size.Height+2))
-		bg.Fill(b.colors.FocusBorder)
+		focusBorder := GetCache().ImageWithColor(int(size.Width+2), int(size.Height+2), b.colors.FocusBorder)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(pos.X-1, pos.Y-1)
-		screen.DrawImage(bg, op)
+		screen.DrawImage(focusBorder, op)
 	}
 	b.LayoutContainer.Draw(screen)
 }

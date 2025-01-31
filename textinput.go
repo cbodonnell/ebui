@@ -368,16 +368,16 @@ func (t *TextInput) Draw(screen *ebiten.Image) {
 
 	if t.isFocused {
 		// Draw the focus border 1px
-		bg := ebiten.NewImage(int(size.Width+2), int(size.Height+2))
-		bg.Fill(t.focusBorderColor)
+		focusBorder := GetCache().ImageWithColor(int(size.Width+2), int(size.Height+2), t.focusBorderColor)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(pos.X-1, pos.Y-1)
-		screen.DrawImage(bg, op)
+		screen.DrawImage(focusBorder, op)
 	}
 
 	// Draw background first on the main screen
-	bg := ebiten.NewImage(int(size.Width-padding.Left-padding.Right), int(size.Height-padding.Top-padding.Bottom))
-	bg.Fill(t.backgroundColor)
+	bgWidth := int(size.Width - padding.Left - padding.Right)
+	bgHeight := int(size.Height - padding.Top - padding.Bottom)
+	bg := GetCache().ImageWithColor(bgWidth, bgHeight, t.backgroundColor)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X+padding.Left, pos.Y+padding.Top)
 	screen.DrawImage(bg, op)
@@ -492,8 +492,7 @@ func (t *TextInput) drawSelection(screen *ebiten.Image) {
 	selectionWidth := endX - startX
 	selectionHeight := size.Height - padding.Top - padding.Bottom
 
-	selection := ebiten.NewImage(int(selectionWidth), int(selectionHeight))
-	selection.Fill(t.selectionColor)
+	selection := GetCache().ImageWithColor(int(selectionWidth), int(selectionHeight), t.selectionColor)
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(
@@ -508,10 +507,10 @@ func (t *TextInput) drawCursor(screen *ebiten.Image) {
 	size := t.GetSize()
 	padding := t.GetPadding()
 
+	cursorHeight := int(size.Height - padding.Top - padding.Bottom)
 	cursorX := t.getXPositionForIndex(t.cursorPos) - t.scrollOffset
 
-	cursor := ebiten.NewImage(1, int(size.Height-padding.Top-padding.Bottom))
-	cursor.Fill(t.cursorColor)
+	cursor := GetCache().ImageWithColor(1, cursorHeight, t.cursorColor)
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(
