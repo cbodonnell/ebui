@@ -102,8 +102,10 @@ func (w *Window) Show() {
 // Hide makes the window invisible
 func (w *Window) Hide() {
 	w.state = WindowStateHidden
-	w.closeCallback()
 	w.Disable()
+	if w.closeCallback != nil {
+		w.closeCallback()
+	}
 }
 
 func (w *Window) AddChild(child Component) {
