@@ -82,6 +82,11 @@ func findComponentAtWithPath[T Component](root Component, x, y float64, currentP
 		return zero, currentPath, false
 	}
 
+	// Check if the component is disabled
+	if component.IsDisabled() {
+		return zero, currentPath, false
+	}
+
 	return component, currentPath, true
 }
 

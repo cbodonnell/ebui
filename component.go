@@ -44,6 +44,9 @@ type Component interface {
 	GetPadding() Padding
 	Contains(x, y float64) bool
 	GetAbsolutePosition() Position
+	Disable()
+	Enable()
+	IsDisabled() bool
 }
 
 var _ Component = &BaseComponent{}
@@ -76,6 +79,7 @@ type BaseComponent struct {
 	padding    Padding
 	background color.Color
 	parent     Container
+	disabled   bool
 }
 
 func WithBackground(color color.Color) ComponentOpt {
@@ -152,6 +156,18 @@ func (b *BaseComponent) GetBackground() color.Color {
 
 func (b *BaseComponent) SetBackground(color color.Color) {
 	b.background = color
+}
+
+func (b *BaseComponent) Disable() {
+	b.disabled = true
+}
+
+func (b *BaseComponent) Enable() {
+	b.disabled = false
+}
+
+func (b *BaseComponent) IsDisabled() bool {
+	return b.disabled
 }
 
 func (b *BaseComponent) drawBackground(screen *ebiten.Image) {

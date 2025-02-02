@@ -96,12 +96,14 @@ func WithWindowPosition(x, y float64) WindowOpt {
 func (w *Window) Show() {
 	w.state = WindowStateNormal
 	w.manager.SetActiveWindow(w)
+	w.Enable()
 }
 
 // Hide makes the window invisible
 func (w *Window) Hide() {
 	w.state = WindowStateHidden
 	w.closeCallback()
+	w.Disable()
 }
 
 func (w *Window) AddChild(child Component) {
