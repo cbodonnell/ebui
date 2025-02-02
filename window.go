@@ -46,6 +46,7 @@ type Window struct {
 	closeCallback func()
 	colors        WindowColors
 	borderWidth   float64
+	isStatic      bool
 }
 
 type WindowOpt func(w *Window)
@@ -89,6 +90,13 @@ func WithHeaderHeight(height float64) WindowOpt {
 func WithWindowPosition(x, y float64) WindowOpt {
 	return func(w *Window) {
 		w.SetPosition(Position{X: x, Y: y})
+	}
+}
+
+// WithStatic makes the window non-draggable
+func WithStatic() WindowOpt {
+	return func(w *Window) {
+		w.isStatic = true
 	}
 }
 
@@ -162,6 +170,11 @@ func (w *Window) registerEventListeners() {
 		// Always activate window on any mouse down within the window
 		w.manager.SetActiveWindow(w)
 
+		// Don't drag if window is static
+		if w.isStatic {
+			return
+		}
+
 		// Start dragging only if over header
 		if w.isOverHeader(e.MouseX, e.MouseY) {
 			w.isDragging = true
@@ -174,10 +187,18 @@ func (w *Window) registerEventListeners() {
 	})
 
 	w.AddEventListener(DragEnd, func(e *Event) {
+		if w.isStatic {
+			return
+		}
+
 		w.isDragging = false
 	})
 
 	w.AddEventListener(Drag, func(e *Event) {
+		if w.isStatic {
+			return
+		}
+
 		if w.isDragging {
 			deltaX := e.MouseX - w.dragStartX
 			deltaY := e.MouseY - w.dragStartY
