@@ -29,6 +29,15 @@ type ButtonColors struct {
 	FocusBorder color.Color
 }
 
+func DefaultButtonColors() ButtonColors {
+	return ButtonColors{
+		Default:     color.RGBA{200, 200, 200, 255},
+		Hovered:     color.RGBA{220, 220, 220, 255},
+		Pressed:     color.RGBA{170, 170, 170, 255},
+		FocusBorder: color.Black,
+	}
+}
+
 func WithLabelText(text string) ComponentOpt {
 	return func(c Component) {
 		if b, ok := c.(*Button); ok {
@@ -61,15 +70,10 @@ func NewButton(opts ...ComponentOpt) *Button {
 			append([]ComponentOpt{withLayout}, opts...)...,
 		),
 		BaseFocusable: NewBaseFocusable(),
-		colors: ButtonColors{
-			Default:     color.RGBA{200, 200, 200, 255}, // Light gray
-			Hovered:     color.RGBA{220, 220, 220, 255}, // Light gray
-			Pressed:     color.RGBA{170, 170, 170, 255}, // Dark gray
-			FocusBorder: color.Black,
-		},
-		onClick:   func() {},
-		focusable: true,
-		tabIndex:  0,
+		colors:        DefaultButtonColors(),
+		onClick:       func() {},
+		focusable:     true,
+		tabIndex:      0,
 	}
 
 	// Button label fills the button's width and is centered
