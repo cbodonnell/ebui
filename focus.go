@@ -56,6 +56,10 @@ func (fm *FocusManager) RefreshFocusableComponents(root Component) {
 	// Find all focusable components
 	var findFocusables func(Component)
 	findFocusables = func(c Component) {
+		if c.IsDisabled() {
+			return
+		}
+
 		if focusable, ok := c.(FocusableComponent); ok {
 			fm.focusableComponents = append(fm.focusableComponents, focusable)
 		}
