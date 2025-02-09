@@ -46,6 +46,14 @@ func WithLabelText(text string) ComponentOpt {
 	}
 }
 
+func WithLabelColor(color color.Color) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Button); ok {
+			b.label.SetColor(color)
+		}
+	}
+}
+
 func WithButtonColors(colors ButtonColors) ComponentOpt {
 	return func(c Component) {
 		if b, ok := c.(*Button); ok {
