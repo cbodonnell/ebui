@@ -374,7 +374,7 @@ func (t *TextInput) Draw(screen *ebiten.Image) {
 
 	if t.isFocused {
 		// Draw the focus border 1px
-		focusBorder := GetCache().ImageWithColor(int(size.Width+2), int(size.Height+2), t.focusBorderColor)
+		focusBorder := GetCache().BorderImageWithColor(int(size.Width+2), int(size.Height+2), t.focusBorderColor)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(pos.X-1, pos.Y-1)
 		screen.DrawImage(focusBorder, op)
