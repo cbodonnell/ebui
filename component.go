@@ -22,7 +22,8 @@ type Size struct {
 }
 
 func (s Size) IsDrawable() bool {
-	return s.Width > 0 && s.Height > 0
+	// TODO: convert size to int since we're dealing with pixels
+	return int(s.Width) > 0 && int(s.Height) > 0
 }
 
 // Padding represents padding around a component
