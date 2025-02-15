@@ -116,6 +116,15 @@ func (w *Window) Hide() {
 	}
 }
 
+// Toggle shows the window if hidden, hides it if visible
+func (w *Window) Toggle() {
+	if w.IsVisible() {
+		w.Hide()
+	} else {
+		w.Show()
+	}
+}
+
 func (w *Window) AddChild(child Component) {
 	w.content.AddChild(child)
 }
