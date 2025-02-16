@@ -18,9 +18,24 @@ type Scrollable interface {
 
 var _ Scrollable = &ScrollableContainer{}
 
+type ScrollableColors struct {
+	Track     color.Color
+	Thumb     color.Color
+	ThumbDrag color.Color
+}
+
+func DefaultScrollableColors() ScrollableColors {
+	return ScrollableColors{
+		Track:     color.RGBA{200, 200, 200, 255},
+		Thumb:     color.RGBA{160, 160, 160, 255},
+		ThumbDrag: color.RGBA{120, 120, 120, 255},
+	}
+}
+
 type ScrollableContainer struct {
 	*BaseFocusable
 	*LayoutContainer
+	colors          ScrollableColors
 	scrollOffset    Position
 	isDraggingThumb bool
 	dragStartY      float64
@@ -29,10 +44,19 @@ type ScrollableContainer struct {
 	isFocused       bool
 }
 
+func WithScrollableColors(colors ScrollableColors) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*ScrollableContainer); ok {
+			b.colors = colors
+		}
+	}
+}
+
 func NewScrollableContainer(opts ...ComponentOpt) *ScrollableContainer {
 	sc := &ScrollableContainer{
 		BaseFocusable:   NewBaseFocusable(),
 		LayoutContainer: NewLayoutContainer(opts...),
+		colors:          DefaultScrollableColors(),
 		scrollBarWidth:  12, // Width of scroll bar in pixels
 	}
 
@@ -244,7 +268,7 @@ func (sc *ScrollableContainer) drawScrollBar(screen *ebiten.Image) {
 	size := sc.GetSize()
 
 	// Draw track
-	trackImg := GetCache().ImageWithColor(int(sc.scrollBarWidth), int(size.Height), color.RGBA{200, 200, 200, 255})
+	trackImg := GetCache().ImageWithColor(int(sc.scrollBarWidth), int(size.Height), sc.colors.Track)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y)
 	screen.DrawImage(trackImg, op)
@@ -253,9 +277,9 @@ func (sc *ScrollableContainer) drawScrollBar(screen *ebiten.Image) {
 	thumbHeight := sc.getScrollThumbHeight()
 	thumbY := sc.getScrollThumbPosition()
 
-	thumbColor := color.RGBA{160, 160, 160, 255}
+	thumbColor := sc.colors.Thumb
 	if sc.isDraggingThumb {
-		thumbColor = color.RGBA{120, 120, 120, 255}
+		thumbColor = sc.colors.ThumbDrag
 	}
 
 	thumbImg := GetCache().ImageWithColor(int(sc.scrollBarWidth), int(thumbHeight), thumbColor)
