@@ -279,7 +279,7 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 	window.content = NewLayoutContainer(
 		WithSize(width, height-window.headerHeight),
 		WithBackground(window.colors.Background),
-		WithLayout(NewVerticalStackLayout(10, AlignStart)),
+		WithLayout(NewVerticalStackLayout(0, AlignStart)),
 	)
 
 	window.LayoutContainer.AddChild(window.header)
