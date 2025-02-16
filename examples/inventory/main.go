@@ -29,6 +29,7 @@ func NewInventoryGame() *InventoryGame {
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{46, 139, 87, 255},
+			HeaderText: color.Black,
 			Border:     color.RGBA{46, 139, 87, 255},
 		}),
 	)

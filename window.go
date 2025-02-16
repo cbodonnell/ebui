@@ -17,6 +17,7 @@ const (
 type WindowColors struct {
 	Background color.Color
 	Header     color.Color
+	HeaderText color.Color
 	Border     color.Color
 }
 
@@ -25,6 +26,7 @@ func DefaultWindowColors() WindowColors {
 	return WindowColors{
 		Background: color.RGBA{240, 240, 240, 255},
 		Header:     color.RGBA{200, 200, 200, 255},
+		HeaderText: color.Black,
 		Border:     color.RGBA{0, 0, 0, 255},
 	}
 }
@@ -269,6 +271,7 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 	titleLabel := NewLabel(
 		window.title,
 		WithSize(width, window.headerHeight),
+		WithColor(window.colors.HeaderText),
 		WithJustify(JustifyCenter),
 	)
 	window.header.AddChild(titleLabel)

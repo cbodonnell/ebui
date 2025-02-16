@@ -131,6 +131,7 @@ func (g *Game) createInfoWindow() {
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{100, 149, 237, 255}, // Cornflower blue
+			HeaderText: color.Black,
 			Border:     color.RGBA{100, 149, 237, 255},
 		}),
 	)
@@ -150,6 +151,7 @@ func (g *Game) createStatsWindow() {
 		ebui.WithWindowColors(ebui.WindowColors{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{46, 139, 87, 255},
+			HeaderText: color.Black,
 			Border:     color.RGBA{46, 139, 87, 255},
 		}),
 	)
@@ -171,11 +173,13 @@ func (g *Game) createRandomWindow() {
 		{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{218, 112, 214, 255}, // Orchid
+			HeaderText: color.Black,
 			Border:     color.RGBA{218, 112, 214, 255},
 		},
 		{
 			Background: color.RGBA{230, 230, 230, 255},
 			Header:     color.RGBA{210, 105, 30, 255}, // Chocolate
+			HeaderText: color.Black,
 			Border:     color.RGBA{210, 105, 30, 255},
 		},
 	}
