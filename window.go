@@ -157,18 +157,17 @@ func (w *Window) Draw(screen *ebiten.Image) {
 }
 
 func (w *Window) clampToScreen() {
-	// Get the game window bounds
-	width, height := ebiten.WindowSize()
-	screenWidth, screenHeight := float64(width), float64(height)
+	// Get the window manager bounds
+	bounds := w.manager.GetSize()
 
 	pos := w.GetPosition()
 	size := w.GetSize()
 
-	// Keep the window title bar on screen
-	minX := -size.Width + size.Width/2    // Keep half the window on screen
-	minY := float64(0)                    // Prevent dragging above screen
-	maxX := screenWidth - size.Width/2    // Keep half the window on screen
-	maxY := screenHeight - w.headerHeight // Keep header on screen
+	// Keep the window title bar within bounds
+	minX := -size.Width + size.Width/2     // Keep half the window within bounds
+	minY := float64(0)                     // Prevent dragging above bounds
+	maxX := bounds.Width - size.Width/2    // Keep half the window within bounds
+	maxY := bounds.Height - w.headerHeight // Keep header within bounds
 
 	pos.X = clamp(pos.X, minX, maxX)
 	pos.Y = clamp(pos.Y, minY, maxY)

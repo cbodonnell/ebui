@@ -104,7 +104,9 @@ func NewGame() *Game {
 	vstack.AddChild(scrollable)
 
 	// Create window manager
-	game.windows = ebui.NewWindowManager()
+	game.windows = ebui.NewWindowManager(
+		ebui.WithSize(800, 600),
+	)
 
 	// Create initial windows
 	game.createStatsWindow()

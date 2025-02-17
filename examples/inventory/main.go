@@ -20,7 +20,9 @@ func NewInventoryGame() *InventoryGame {
 	root := ebui.NewBaseContainer()
 
 	// Create window manager
-	wm := ebui.NewWindowManager()
+	wm := ebui.NewWindowManager(
+		ebui.WithSize(638, 656),
+	)
 
 	// Create the window
 	window := wm.CreateWindow(318, 336,

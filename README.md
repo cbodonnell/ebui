@@ -203,6 +203,9 @@ scrollable := ebui.NewScrollableContainer(
 ### Window
 
 ```go
+windowManager := ebui.NewWindowManager(
+	ebui.WithSize(800, 600),
+)
 window := windowManager.CreateWindow(400, 300,
     ebui.WithWindowTitle("My Window"),
     ebui.WithWindowColors(ebui.WindowColors{
