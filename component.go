@@ -74,19 +74,29 @@ func WithPadding(top, right, bottom, left float64) ComponentOpt {
 
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
-	id         uint64
-	position   Position
-	size       Size
-	padding    Padding
-	background color.Color
-	parent     Container
-	disabled   bool
+	id               uint64
+	position         Position
+	size             Size
+	padding          Padding
+	background       color.Color
+	parent           Container
+	disabled         bool
+	drawOnBackground func(screen *ebiten.Image)
 }
 
 func WithBackground(color color.Color) ComponentOpt {
 	return func(c Component) {
 		if bc, ok := c.(*BaseComponent); ok {
 			bc.background = color
+		}
+	}
+}
+
+// WithDrawOnBackground sets a function to allow drawing on the background of the component
+func WithDrawOnBackground(fn func(screen *ebiten.Image)) ComponentOpt {
+	return func(c Component) {
+		if bc, ok := c.(*BaseComponent); ok {
+			bc.drawOnBackground = fn
 		}
 	}
 }
@@ -116,6 +126,9 @@ func (b *BaseComponent) Draw(screen *ebiten.Image) {
 		return
 	}
 	b.drawBackground(screen)
+	if b.drawOnBackground != nil {
+		b.drawOnBackground(screen)
+	}
 	b.drawDebug(screen)
 }
 
