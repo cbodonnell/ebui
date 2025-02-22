@@ -105,6 +105,9 @@ func (b *Label) Draw(screen *ebiten.Image) {
 	if !b.size.IsDrawable() {
 		panic("Label must have a size")
 	}
+	if b.hidden {
+		return
+	}
 	b.BaseComponent.drawBackground(screen)
 	b.draw(screen)
 	b.BaseComponent.drawDebug(screen)

@@ -48,6 +48,9 @@ type Component interface {
 	Disable()
 	Enable()
 	IsDisabled() bool
+	Hide()
+	Show()
+	IsHidden() bool
 }
 
 var _ Component = &BaseComponent{}
@@ -74,14 +77,14 @@ func WithPadding(top, right, bottom, left float64) ComponentOpt {
 
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
-	id               uint64
-	position         Position
-	size             Size
-	padding          Padding
-	background       color.Color
-	parent           Container
-	disabled         bool
-	drawOnBackground func(screen *ebiten.Image)
+	id         uint64
+	position   Position
+	size       Size
+	padding    Padding
+	background color.Color
+	parent     Container
+	disabled   bool
+	hidden     bool
 }
 
 func WithBackground(color color.Color) ComponentOpt {
@@ -92,11 +95,10 @@ func WithBackground(color color.Color) ComponentOpt {
 	}
 }
 
-// WithDrawOnBackground sets a function to allow drawing on the background of the component
-func WithDrawOnBackground(fn func(screen *ebiten.Image)) ComponentOpt {
+func WithHidden() ComponentOpt {
 	return func(c Component) {
 		if bc, ok := c.(*BaseComponent); ok {
-			bc.drawOnBackground = fn
+			bc.hidden = true
 		}
 	}
 }
@@ -125,10 +127,11 @@ func (b *BaseComponent) Draw(screen *ebiten.Image) {
 		// Don't draw if the component has no size
 		return
 	}
-	b.drawBackground(screen)
-	if b.drawOnBackground != nil {
-		b.drawOnBackground(screen)
+	if b.hidden {
+		// Don't draw if the component is hidden
+		return
 	}
+	b.drawBackground(screen)
 	b.drawDebug(screen)
 }
 
@@ -182,6 +185,18 @@ func (b *BaseComponent) Enable() {
 
 func (b *BaseComponent) IsDisabled() bool {
 	return b.disabled
+}
+
+func (b *BaseComponent) Hide() {
+	b.hidden = true
+}
+
+func (b *BaseComponent) Show() {
+	b.hidden = false
+}
+
+func (b *BaseComponent) IsHidden() bool {
+	return b.hidden
 }
 
 func (b *BaseComponent) drawBackground(screen *ebiten.Image) {
