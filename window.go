@@ -38,6 +38,7 @@ type Window struct {
 	header        *LayoutContainer
 	content       *LayoutContainer
 	title         string
+	titleLabel    *Label
 	state         WindowState
 	isDragging    bool
 	dragStartX    float64
@@ -138,6 +139,11 @@ func (w *Window) RemoveChild(child Component) {
 // IsVisible returns whether the window is currently visible
 func (w *Window) IsVisible() bool {
 	return w.state == WindowStateNormal
+}
+
+func (w *Window) SetTitle(title string) {
+	w.title = title
+	w.titleLabel.SetText(title)
 }
 
 func (w *Window) Draw(screen *ebiten.Image) {
@@ -267,13 +273,13 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 		WithLayout(NewVerticalStackLayout(0, AlignStart)),
 	)
 
-	titleLabel := NewLabel(
+	window.titleLabel = NewLabel(
 		window.title,
 		WithSize(width, window.headerHeight),
 		WithColor(window.colors.HeaderText),
 		WithJustify(JustifyCenter),
 	)
-	window.header.AddChild(titleLabel)
+	window.header.AddChild(window.titleLabel)
 
 	window.content = NewLayoutContainer(
 		WithSize(width, height-window.headerHeight),
