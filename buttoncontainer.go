@@ -37,7 +37,7 @@ func DefaultButtonColors() ButtonColors {
 
 func WithButtonColors(colors ButtonColors) ComponentOpt {
 	return func(c Component) {
-		if b, ok := c.(*Button); ok {
+		if b, ok := c.(*ButtonContainer); ok {
 			b.colors = colors
 		}
 	}
@@ -45,7 +45,7 @@ func WithButtonColors(colors ButtonColors) ComponentOpt {
 
 func WithClickHandler(handler func()) ComponentOpt {
 	return func(c Component) {
-		if b, ok := c.(*Button); ok {
+		if b, ok := c.(*ButtonContainer); ok {
 			b.onClick = handler
 		}
 	}
