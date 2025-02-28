@@ -1,5 +1,11 @@
 package ebui
 
+import (
+	"image"
+
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
 // StackContainer manages a stack of views/screens with transitions
 type StackContainer struct {
 	*BaseContainer
@@ -132,7 +138,7 @@ func (sc *StackContainer) Pop() {
 	// Just need to ensure it's positioned correctly
 	previousView := sc.stack[len(sc.stack)-2]
 	previousView.SetPosition(Position{
-		X:        0,
+		X:        -sc.GetSize().Width,
 		Y:        0,
 		Relative: true,
 	})
@@ -160,6 +166,39 @@ func (sc *StackContainer) finishTransition() {
 	}
 
 	sc.transitioning = false
+}
+
+// Draw overrides the BaseContainer.Draw method to implement clipping
+func (sc *StackContainer) Draw(screen *ebiten.Image) {
+	// Draw the container's background and debug info
+	sc.BaseComponent.Draw(screen)
+
+	// Create a sub-image for clipping to the container's bounds
+	bounds := sc.getVisibleBounds()
+	subScreen := screen.SubImage(bounds).(*ebiten.Image)
+
+	// Draw all children to the clipped sub-image
+	for _, child := range sc.children {
+		child.Draw(subScreen)
+	}
+}
+
+// getVisibleBounds returns the visible rectangle of the container
+func (sc *StackContainer) getVisibleBounds() image.Rectangle {
+	pos := sc.GetAbsolutePosition()
+	size := sc.GetSize()
+	padding := sc.GetPadding()
+
+	return image.Rectangle{
+		Min: image.Point{
+			X: int(pos.X + padding.Left),
+			Y: int(pos.Y + padding.Top),
+		},
+		Max: image.Point{
+			X: int(pos.X + size.Width - padding.Right),
+			Y: int(pos.Y + size.Height - padding.Bottom),
+		},
+	}
 }
 
 // GetActiveView returns the currently active view
