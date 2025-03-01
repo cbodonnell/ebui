@@ -51,6 +51,11 @@ func findComponentAtWithPath[T Component](root Component, x, y float64, currentP
 		return zero, currentPath, false
 	}
 
+	// Check if the component is disabled or hidden
+	if root.IsDisabled() {
+		return zero, currentPath, false
+	}
+
 	// Check if this component is an event boundary
 	if eb, ok := root.(EventBoundary); ok && !eb.IsWithinBounds(x, y) {
 		return zero, currentPath, false
@@ -79,11 +84,6 @@ func findComponentAtWithPath[T Component](root Component, x, y float64, currentP
 
 	// Check if the point is within the component's bounds
 	if !root.Contains(x, y) {
-		return zero, currentPath, false
-	}
-
-	// Check if the component is disabled
-	if component.IsDisabled() {
 		return zero, currentPath, false
 	}
 

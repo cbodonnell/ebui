@@ -136,6 +136,10 @@ func (b *ButtonContainer) updateAppearance() {
 }
 
 func (b *ButtonContainer) Draw(screen *ebiten.Image) {
+	if b.IsHidden() {
+		return
+	}
+
 	if b.isFocused {
 		// Draw the focus border 1px
 		pos := b.GetAbsolutePosition()
