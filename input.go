@@ -251,7 +251,6 @@ func (im *InputManager) handleMouseInput(root Component) {
 		dragEndEvent := baseEvent
 		dragEndEvent.Type = DragEnd
 		dragEndEvent.Target = im.dragSource
-		im.dispatchEvent(&dragEndEvent)
 
 		if target != nil && target != im.dragSource {
 			dropEvent := baseEvent
@@ -259,7 +258,12 @@ func (im *InputManager) handleMouseInput(root Component) {
 			dropEvent.Target = target
 			dropEvent.RelatedTarget = im.dragSource
 			im.dispatchEvent(&dropEvent)
+			// assign drop target to dragEnd event
+			dragEndEvent.RelatedTarget = target
 		}
+
+		// dispatch DragEnd event later after assigning drop target
+		im.dispatchEvent(&dragEndEvent)
 
 		im.isDragging = false
 		im.dragSource = nil
