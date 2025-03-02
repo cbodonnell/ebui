@@ -141,6 +141,13 @@ func (w *Window) IsVisible() bool {
 	return w.state == WindowStateNormal
 }
 
+func (w *Window) SetSize(size Size) {
+	w.LayoutContainer.SetSize(size)
+	// Update header and content sizes
+	w.header.SetSize(Size{Width: size.Width, Height: w.headerHeight})
+	w.content.SetSize(Size{Width: size.Width, Height: size.Height - w.headerHeight})
+}
+
 func (w *Window) SetTitle(title string) {
 	w.title = title
 	w.titleLabel.SetText(title)
