@@ -318,3 +318,19 @@ func (sc *ScrollableContainer) getVisibleBounds() image.Rectangle {
 		},
 	}
 }
+
+func (sc *ScrollableContainer) ScrollToTop() {
+	scrollOffset := sc.GetScrollOffset()
+	scrollOffset.Y = 0
+	sc.SetScrollOffset(scrollOffset)
+}
+
+func (sc *ScrollableContainer) ScrollToBottom() {
+	contentSize := sc.layout.GetMinSize(sc)
+	viewportSize := sc.GetSize()
+	maxScroll := math.Max(0, contentSize.Height-viewportSize.Height)
+
+	scrollOffset := sc.GetScrollOffset()
+	scrollOffset.Y = maxScroll
+	sc.SetScrollOffset(scrollOffset)
+}
