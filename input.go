@@ -19,12 +19,27 @@ type InputManager struct {
 	tabRepeatLast   time.Time
 }
 
-func NewInputManager() *InputManager {
-	return &InputManager{
+type InputManagerOpt func(im *InputManager)
+
+// WithFocusManager sets the focus manager for the input manager
+func WithFocusManager(fm *FocusManager) InputManagerOpt {
+	return func(im *InputManager) {
+		im.focusManager = fm
+	}
+}
+
+func NewInputManager(opts ...InputManagerOpt) *InputManager {
+	im := &InputManager{
 		lastUpdateTime: time.Now().UnixNano(),
 		buttonStates:   make(map[ebiten.MouseButton]bool),
 		focusManager:   NewFocusManager(),
 	}
+
+	for _, opt := range opts {
+		opt(im)
+	}
+
+	return im
 }
 
 // findInteractiveComponentAt returns both the target component and its path
