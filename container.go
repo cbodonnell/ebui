@@ -56,6 +56,9 @@ func (c *BaseContainer) Update() error {
 }
 
 func (c *BaseContainer) Draw(screen *ebiten.Image) {
+	if c.IsHidden() {
+		return
+	}
 	c.BaseComponent.Draw(screen)
 	for _, child := range c.children {
 		child.Draw(screen)
