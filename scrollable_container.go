@@ -14,6 +14,11 @@ type Scrollable interface {
 	EventBoundary
 	GetScrollOffset() Position
 	SetScrollOffset(offset Position)
+	HideScrollBar()
+	ShowScrollBar()
+	IsScrollBarHidden() bool
+	ScrollToTop()
+	ScrollToBottom()
 }
 
 var _ Scrollable = &ScrollableContainer{}
@@ -35,13 +40,14 @@ func DefaultScrollableColors() ScrollableColors {
 type ScrollableContainer struct {
 	*BaseFocusable
 	*LayoutContainer
-	colors          ScrollableColors
-	scrollOffset    Position
-	isDraggingThumb bool
-	dragStartY      float64
-	dragStartOffset float64
-	scrollBarWidth  float64
-	isFocused       bool
+	colors            ScrollableColors
+	scrollOffset      Position
+	isDraggingThumb   bool
+	dragStartY        float64
+	dragStartOffset   float64
+	scrollBarWidth    float64
+	isFocused         bool
+	isScrollBarHidden bool
 }
 
 func WithScrollableColors(colors ScrollableColors) ComponentOpt {
@@ -228,6 +234,9 @@ func (sc *ScrollableContainer) IsWithinBounds(x, y float64) bool {
 
 // Scroll bar related methods
 func (sc *ScrollableContainer) needsScrollBar() bool {
+	if sc.isScrollBarHidden {
+		return false
+	}
 	contentSize := sc.layout.GetMinSize(sc)
 	viewportSize := sc.GetSize()
 	return contentSize.Height > viewportSize.Height
@@ -333,4 +342,16 @@ func (sc *ScrollableContainer) ScrollToBottom() {
 	scrollOffset := sc.GetScrollOffset()
 	scrollOffset.Y = maxScroll
 	sc.SetScrollOffset(scrollOffset)
+}
+
+func (sc *ScrollableContainer) HideScrollBar() {
+	sc.isScrollBarHidden = true
+}
+
+func (sc *ScrollableContainer) ShowScrollBar() {
+	sc.isScrollBarHidden = false
+}
+
+func (sc *ScrollableContainer) IsScrollBarHidden() bool {
+	return sc.isScrollBarHidden
 }
