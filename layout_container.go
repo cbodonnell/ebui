@@ -44,3 +44,9 @@ func (c *LayoutContainer) RemoveChild(child Component) {
 		c.layout.ArrangeChildren(c)
 	}
 }
+
+func (c *LayoutContainer) ArrangeChildren() {
+	if c.layout != nil {
+		c.layout.ArrangeChildren(c)
+	}
+}
