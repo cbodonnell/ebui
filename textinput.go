@@ -368,6 +368,10 @@ func (t *TextInput) handleKey(key ebiten.Key, ctrlPressed, shiftPressed bool) bo
 }
 
 func (t *TextInput) Draw(screen *ebiten.Image) {
+	if t.IsHidden() {
+		return
+	}
+
 	pos := t.GetAbsolutePosition()
 	size := t.GetSize()
 	padding := t.GetPadding()
