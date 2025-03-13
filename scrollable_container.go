@@ -277,23 +277,43 @@ func (sc *ScrollableContainer) drawScrollBar(screen *ebiten.Image) {
 	size := sc.GetSize()
 
 	// Draw track
-	trackImg := GetCache().ImageWithColor(int(sc.scrollBarWidth), int(size.Height), sc.colors.Track)
+	trackWidth := int(sc.scrollBarWidth)
+	trackHeight := int(size.Height)
+
+	trackImg := GetCache().ImageWithColor(trackWidth, trackHeight, sc.colors.Track)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y)
 	screen.DrawImage(trackImg, op)
 
 	// Draw thumb
-	thumbHeight := sc.getScrollThumbHeight()
-	thumbY := sc.getScrollThumbPosition()
+	thumbHeight := int(sc.getScrollThumbHeight())
+
+	// Calculate max position where thumb would touch bottom exactly
+	maxThumbY := trackHeight - thumbHeight
+
+	// Calculate normal position using ratio
+	contentSize := sc.layout.GetMinSize(sc)
+	viewportSize := sc.GetSize()
+	maxScroll := math.Max(0, contentSize.Height-viewportSize.Height)
+
+	// Calculate thumb position, ensuring it doesn't exceed the track
+	var thumbY int
+	if maxScroll <= 0 {
+		thumbY = 0
+	} else {
+		ratio := float64(sc.scrollOffset.Y) / maxScroll
+		// Use integer math to avoid fractional positioning
+		thumbY = int(math.Min(float64(maxThumbY), float64(maxThumbY)*ratio))
+	}
 
 	thumbColor := sc.colors.Thumb
 	if sc.isDraggingThumb {
 		thumbColor = sc.colors.ThumbDrag
 	}
 
-	thumbImg := GetCache().ImageWithColor(int(sc.scrollBarWidth), int(thumbHeight), thumbColor)
+	thumbImg := GetCache().ImageWithColor(trackWidth, thumbHeight, thumbColor)
 	op = &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y+thumbY)
+	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y+float64(thumbY))
 	screen.DrawImage(thumbImg, op)
 }
 
