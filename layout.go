@@ -129,7 +129,23 @@ func (l *StackLayout) ArrangeChildren(container Container) {
 		case AlignCenter:
 			startY = containerPadding.Top + (availableHeight-totalSize)/2
 		case AlignEnd:
-			startY = containerPadding.Top + availableHeight - totalSize
+			// For scrollable containers, we need to check if this is a scrollable
+			// If we're in a scrollable and content is taller than available space,
+			// we should align to bottom without adding extra space
+			if _, ok := container.(Scrollable); ok {
+				// Check if we need scrolling (content exceeds container height)
+				if totalSize > availableHeight {
+					// When scrollable overflows with AlignEnd, we want content to
+					// stick to the bottom of the visible area
+					startY = containerPadding.Top
+				} else {
+					// Normal case: content fits, align to bottom
+					startY = containerPadding.Top + availableHeight - totalSize
+				}
+			} else {
+				// Normal case for non-scrollable containers
+				startY = containerPadding.Top + availableHeight - totalSize
+			}
 		}
 	}
 
