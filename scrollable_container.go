@@ -364,6 +364,17 @@ func (sc *ScrollableContainer) ScrollToBottom() {
 	sc.SetScrollOffset(scrollOffset)
 }
 
+func (sc *ScrollableContainer) IsScrolledToTop() bool {
+	return sc.scrollOffset.Y == 0
+}
+
+func (sc *ScrollableContainer) IsScrolledToBottom() bool {
+	contentSize := sc.layout.GetMinSize(sc)
+	viewportSize := sc.GetSize()
+	maxScroll := math.Max(0, contentSize.Height-viewportSize.Height)
+	return sc.scrollOffset.Y == maxScroll
+}
+
 func (sc *ScrollableContainer) HideScrollBar() {
 	sc.isScrollBarHidden = true
 }
