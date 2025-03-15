@@ -31,7 +31,6 @@ func NewManager(root Container, opts ...ManagerOpt) *Manager {
 	}
 
 	return m
-
 }
 
 // Update updates the UI Manager.
@@ -42,4 +41,19 @@ func (u *Manager) Update() error {
 
 func (u *Manager) Draw(screen *ebiten.Image) {
 	u.root.Draw(screen)
+}
+
+// DisableFocus disables focus management for the UI.
+func (u *Manager) DisableFocus() {
+	u.input.DisableFocusManagement()
+}
+
+// EnableFocus enables focus management for the UI.
+func (u *Manager) EnableFocus() {
+	u.input.EnableFocusManagement()
+}
+
+// IsFocusEnabled returns whether focus management is enabled.
+func (u *Manager) IsFocusEnabled() bool {
+	return u.input.IsFocusManagementEnabled()
 }

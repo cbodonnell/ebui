@@ -43,14 +43,21 @@ func (b *BaseFocusable) SetTabIndex(index int) {
 type FocusManager struct {
 	focusableComponents []FocusableComponent
 	currentFocus        FocusableComponent
+	enabled             bool
 }
 
 func NewFocusManager() *FocusManager {
-	return &FocusManager{}
+	return &FocusManager{
+		enabled: true,
+	}
 }
 
 // RefreshFocusableComponents finds all focusable components in the component tree
 func (fm *FocusManager) RefreshFocusableComponents(root Component) {
+	if !fm.enabled {
+		return
+	}
+
 	fm.focusableComponents = nil
 
 	// Find all focusable components
@@ -80,6 +87,10 @@ func (fm *FocusManager) RefreshFocusableComponents(root Component) {
 }
 
 func (fm *FocusManager) SetFocus(component FocusableComponent) {
+	if !fm.enabled {
+		return
+	}
+
 	if fm.currentFocus == component {
 		return
 	}
@@ -108,11 +119,14 @@ func (fm *FocusManager) SetFocus(component FocusableComponent) {
 }
 
 func (fm *FocusManager) GetCurrentFocus() FocusableComponent {
+	if !fm.enabled {
+		return nil
+	}
 	return fm.currentFocus
 }
 
 func (fm *FocusManager) HandleTab(shiftPressed bool) {
-	if len(fm.focusableComponents) == 0 {
+	if !fm.enabled || len(fm.focusableComponents) == 0 {
 		return
 	}
 
@@ -142,4 +156,28 @@ func (fm *FocusManager) HandleTab(shiftPressed bool) {
 	}
 
 	fm.SetFocus(fm.focusableComponents[nextIndex])
+}
+
+// Enable turns on focus management
+func (fm *FocusManager) Enable() {
+	fm.enabled = true
+}
+
+// Disable turns off focus management
+func (fm *FocusManager) Disable() {
+	// If there is a currently focused component, blur it
+	if fm.currentFocus != nil {
+		blurEvent := &Event{
+			Type:   Blur,
+			Target: fm.currentFocus,
+		}
+		fm.currentFocus.HandleEvent(blurEvent)
+		fm.currentFocus = nil
+	}
+	fm.enabled = false
+}
+
+// IsEnabled returns whether focus management is enabled
+func (fm *FocusManager) IsEnabled() bool {
+	return fm.enabled
 }

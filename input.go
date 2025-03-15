@@ -180,8 +180,8 @@ func (im *InputManager) handleMouseInput(root Component) {
 			if isPressed {
 				evt.Type = MouseDown
 
-				// Handle focus change on left click
-				if btn == ebiten.MouseButtonLeft {
+				// Handle focus change on left click only if focus management is enabled
+				if btn == ebiten.MouseButtonLeft && im.focusManager.IsEnabled() {
 					if focusable, ok := target.(FocusableComponent); ok {
 						im.focusManager.SetFocus(focusable)
 					} else {
@@ -290,6 +290,11 @@ func (im *InputManager) handleMouseInput(root Component) {
 }
 
 func (im *InputManager) handleKeyboardInput(root Component) {
+	// Skip keyboard input handling if focus management is disabled
+	if !im.focusManager.IsEnabled() {
+		return
+	}
+
 	escPressed := ebiten.IsKeyPressed(ebiten.KeyEscape)
 	if escPressed {
 		im.focusManager.SetFocus(nil)
@@ -330,4 +335,19 @@ func (im *InputManager) handleKeyboardInput(root Component) {
 		im.tabRepeatStart = now
 	}
 	im.tabRepeatLast = now
+}
+
+// DisableFocusManagement disables the focus manager
+func (im *InputManager) DisableFocusManagement() {
+	im.focusManager.Disable()
+}
+
+// EnableFocusManagement enables the focus manager
+func (im *InputManager) EnableFocusManagement() {
+	im.focusManager.Enable()
+}
+
+// IsFocusManagementEnabled returns whether focus management is enabled
+func (im *InputManager) IsFocusManagementEnabled() bool {
+	return im.focusManager.IsEnabled()
 }
