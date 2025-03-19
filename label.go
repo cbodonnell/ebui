@@ -14,13 +14,12 @@ var _ Component = &Label{}
 
 type Label struct {
 	*BaseComponent
-	text       string
-	justify    Justify
-	color      color.Color
-	font       font.Face
-	wrap       bool
-	lines      []string
-	linesDirty bool
+	text    string
+	justify Justify
+	color   color.Color
+	font    font.Face
+	wrap    bool
+	lines   []string
 }
 
 type Justify int
@@ -59,7 +58,6 @@ func WithTextWrap() ComponentOpt {
 	return func(c Component) {
 		if b, ok := c.(*Label); ok {
 			b.wrap = true
-			b.linesDirty = true
 		}
 	}
 }
@@ -72,45 +70,15 @@ func NewLabel(text string, opts ...ComponentOpt) *Label {
 		font:          basicfont.Face7x13, // Default font
 		justify:       JustifyCenter,      // Default text justification
 		wrap:          false,              // Default to no wrapping
-		linesDirty:    true,
 	}
 
 	for _, opt := range opts {
 		opt(b)
 	}
 
+	b.calculateWrappedLines()
+
 	return b
-}
-
-func (b *Label) GetText() string {
-	return b.text
-}
-
-func (b *Label) SetText(text string) {
-	if b.text != text {
-		b.text = text
-		b.linesDirty = true
-	}
-}
-
-func (b *Label) GetColor() color.Color {
-	return b.color
-}
-
-func (b *Label) SetColor(color color.Color) {
-	b.color = color
-}
-
-func (b *Label) Draw(screen *ebiten.Image) {
-	if !b.size.IsDrawable() {
-		panic("Label must have a size")
-	}
-	if b.hidden {
-		return
-	}
-	b.BaseComponent.drawBackground(screen)
-	b.draw(screen)
-	b.BaseComponent.drawDebug(screen)
 }
 
 // calculateWrappedLines splits the text into lines that fit within the label width
@@ -154,8 +122,45 @@ func (b *Label) calculateWrappedLines() {
 	if currentLine != "" {
 		b.lines = append(b.lines, currentLine)
 	}
+}
 
-	b.linesDirty = false
+func (b *Label) GetText() string {
+	return b.text
+}
+
+func (b *Label) SetText(text string) {
+	if b.text != text {
+		b.text = text
+		b.calculateWrappedLines()
+	}
+}
+
+func (b *Label) GetColor() color.Color {
+	return b.color
+}
+
+func (b *Label) SetColor(color color.Color) {
+	b.color = color
+}
+
+func (b *Label) GetNumberOfLines() int {
+	return len(b.lines)
+}
+
+func (b *Label) GetLineHeight() int {
+	return b.font.Metrics().Height.Ceil()
+}
+
+func (b *Label) Draw(screen *ebiten.Image) {
+	if !b.size.IsDrawable() {
+		panic("Label must have a size")
+	}
+	if b.hidden {
+		return
+	}
+	b.BaseComponent.drawBackground(screen)
+	b.draw(screen)
+	b.BaseComponent.drawDebug(screen)
 }
 
 // draw renders the label to the screen
@@ -163,11 +168,6 @@ func (b Label) draw(screen *ebiten.Image) {
 	pos := b.GetAbsolutePosition()
 	size := b.GetSize()
 	padding := b.GetPadding()
-
-	// Calculate wrapped lines if needed
-	if b.linesDirty {
-		b.calculateWrappedLines()
-	}
 
 	// Calculate total height of text
 	lineHeight := b.font.Metrics().Height.Ceil()
