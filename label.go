@@ -14,13 +14,13 @@ var _ Component = &Label{}
 
 type Label struct {
 	*BaseComponent
-	text       string
-	justify    Justify
-	color      color.Color
-	font       font.Face
-	wrap       bool
-	lines      []string
-	linesDirty bool
+	text        string
+	justify     Justify
+	color       color.Color
+	font        font.Face
+	wrap        bool
+	lines       []string
+	lineSpacing int
 }
 
 type Justify int
@@ -59,7 +59,14 @@ func WithTextWrap() ComponentOpt {
 	return func(c Component) {
 		if b, ok := c.(*Label); ok {
 			b.wrap = true
-			b.linesDirty = true
+		}
+	}
+}
+
+func WithLineSpacing(spacing int) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Label); ok {
+			b.lineSpacing = spacing
 		}
 	}
 }
@@ -72,45 +79,15 @@ func NewLabel(text string, opts ...ComponentOpt) *Label {
 		font:          basicfont.Face7x13, // Default font
 		justify:       JustifyCenter,      // Default text justification
 		wrap:          false,              // Default to no wrapping
-		linesDirty:    true,
 	}
 
 	for _, opt := range opts {
 		opt(b)
 	}
 
+	b.calculateWrappedLines()
+
 	return b
-}
-
-func (b *Label) GetText() string {
-	return b.text
-}
-
-func (b *Label) SetText(text string) {
-	if b.text != text {
-		b.text = text
-		b.linesDirty = true
-	}
-}
-
-func (b *Label) GetColor() color.Color {
-	return b.color
-}
-
-func (b *Label) SetColor(color color.Color) {
-	b.color = color
-}
-
-func (b *Label) Draw(screen *ebiten.Image) {
-	if !b.size.IsDrawable() {
-		panic("Label must have a size")
-	}
-	if b.hidden {
-		return
-	}
-	b.BaseComponent.drawBackground(screen)
-	b.draw(screen)
-	b.BaseComponent.drawDebug(screen)
 }
 
 // calculateWrappedLines splits the text into lines that fit within the label width
@@ -154,8 +131,62 @@ func (b *Label) calculateWrappedLines() {
 	if currentLine != "" {
 		b.lines = append(b.lines, currentLine)
 	}
+}
 
-	b.linesDirty = false
+func (b *Label) GetText() string {
+	return b.text
+}
+
+func (b *Label) SetText(text string) {
+	if b.text != text {
+		b.text = text
+		b.calculateWrappedLines()
+	}
+}
+
+func (b *Label) GetColor() color.Color {
+	return b.color
+}
+
+func (b *Label) SetColor(color color.Color) {
+	b.color = color
+}
+
+func (b *Label) GetNumberOfLines() int {
+	return len(b.lines)
+}
+
+func (b *Label) GetLineHeight() int {
+	return b.font.Metrics().Height.Ceil()
+}
+
+func (b *Label) GetTextHeight() int {
+	lineCount := b.GetNumberOfLines()
+	if lineCount <= 0 {
+		return 0
+	}
+
+	lineHeight := b.GetLineHeight()
+
+	// For a single line, just return line height
+	if lineCount == 1 {
+		return lineHeight
+	}
+
+	// For multiple lines, add spacing between lines
+	return lineHeight + (lineCount-1)*(lineHeight+b.lineSpacing)
+}
+
+func (b *Label) Draw(screen *ebiten.Image) {
+	if !b.size.IsDrawable() {
+		panic("Label must have a size")
+	}
+	if b.hidden {
+		return
+	}
+	b.BaseComponent.drawBackground(screen)
+	b.draw(screen)
+	b.BaseComponent.drawDebug(screen)
 }
 
 // draw renders the label to the screen
@@ -164,14 +195,13 @@ func (b Label) draw(screen *ebiten.Image) {
 	size := b.GetSize()
 	padding := b.GetPadding()
 
-	// Calculate wrapped lines if needed
-	if b.linesDirty {
-		b.calculateWrappedLines()
-	}
-
-	// Calculate total height of text
+	// Calculate total height of text with line spacing
 	lineHeight := b.font.Metrics().Height.Ceil()
-	totalTextHeight := lineHeight * len(b.lines)
+	totalLineHeight := lineHeight + b.lineSpacing
+	totalTextHeight := totalLineHeight*(len(b.lines)-1) + lineHeight
+	if len(b.lines) == 0 {
+		totalTextHeight = 0
+	}
 
 	// Calculate starting Y position based on total text height
 	startY := pos.Y + padding.Top + (size.Height-float64(totalTextHeight))/2
@@ -191,7 +221,8 @@ func (b Label) draw(screen *ebiten.Image) {
 			textX = pos.X + size.Width - padding.Right - float64(textWidth)
 		}
 
-		lineY := startY + float64(lineHeight*i) + float64(b.font.Metrics().Ascent.Ceil())
+		// Use line spacing when calculating Y position
+		lineY := startY + float64(totalLineHeight*i) + float64(b.font.Metrics().Ascent.Ceil())
 		text.Draw(screen, line, b.font, int(textX), int(lineY), b.color)
 	}
 }
