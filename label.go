@@ -151,6 +151,10 @@ func (b *Label) GetLineHeight() int {
 	return b.font.Metrics().Height.Ceil()
 }
 
+func (b *Label) GetTextHeight() int {
+	return b.GetNumberOfLines() * b.GetLineHeight()
+}
+
 func (b *Label) Draw(screen *ebiten.Image) {
 	if !b.size.IsDrawable() {
 		panic("Label must have a size")
