@@ -14,12 +14,13 @@ var _ Component = &Label{}
 
 type Label struct {
 	*BaseComponent
-	text    string
-	justify Justify
-	color   color.Color
-	font    font.Face
-	wrap    bool
-	lines   []string
+	text        string
+	justify     Justify
+	color       color.Color
+	font        font.Face
+	wrap        bool
+	lines       []string
+	lineSpacing int
 }
 
 type Justify int
@@ -58,6 +59,14 @@ func WithTextWrap() ComponentOpt {
 	return func(c Component) {
 		if b, ok := c.(*Label); ok {
 			b.wrap = true
+		}
+	}
+}
+
+func WithLineSpacing(spacing int) ComponentOpt {
+	return func(c Component) {
+		if b, ok := c.(*Label); ok {
+			b.lineSpacing = spacing
 		}
 	}
 }
@@ -152,7 +161,20 @@ func (b *Label) GetLineHeight() int {
 }
 
 func (b *Label) GetTextHeight() int {
-	return b.GetNumberOfLines() * b.GetLineHeight()
+	lineCount := b.GetNumberOfLines()
+	if lineCount <= 0 {
+		return 0
+	}
+
+	lineHeight := b.GetLineHeight()
+
+	// For a single line, just return line height
+	if lineCount == 1 {
+		return lineHeight
+	}
+
+	// For multiple lines, add spacing between lines
+	return lineHeight + (lineCount-1)*(lineHeight+b.lineSpacing)
 }
 
 func (b *Label) Draw(screen *ebiten.Image) {
@@ -173,9 +195,13 @@ func (b Label) draw(screen *ebiten.Image) {
 	size := b.GetSize()
 	padding := b.GetPadding()
 
-	// Calculate total height of text
+	// Calculate total height of text with line spacing
 	lineHeight := b.font.Metrics().Height.Ceil()
-	totalTextHeight := lineHeight * len(b.lines)
+	totalLineHeight := lineHeight + b.lineSpacing
+	totalTextHeight := totalLineHeight*(len(b.lines)-1) + lineHeight
+	if len(b.lines) == 0 {
+		totalTextHeight = 0
+	}
 
 	// Calculate starting Y position based on total text height
 	startY := pos.Y + padding.Top + (size.Height-float64(totalTextHeight))/2
@@ -195,7 +221,8 @@ func (b Label) draw(screen *ebiten.Image) {
 			textX = pos.X + size.Width - padding.Right - float64(textWidth)
 		}
 
-		lineY := startY + float64(lineHeight*i) + float64(b.font.Metrics().Ascent.Ceil())
+		// Use line spacing when calculating Y position
+		lineY := startY + float64(totalLineHeight*i) + float64(b.font.Metrics().Ascent.Ceil())
 		text.Draw(screen, line, b.font, int(textX), int(lineY), b.color)
 	}
 }
