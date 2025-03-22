@@ -9,6 +9,7 @@ type Container interface {
 	AddChild(child Component)
 	RemoveChild(child Component)
 	GetChildren() []Component
+	ClearChildren()
 }
 
 var _ Container = &BaseContainer{}
@@ -44,6 +45,12 @@ func (c *BaseContainer) RemoveChild(child Component) {
 
 func (c *BaseContainer) GetChildren() []Component {
 	return c.children
+}
+
+func (c *BaseContainer) ClearChildren() {
+	for len(c.children) > 0 {
+		c.RemoveChild(c.children[0])
+	}
 }
 
 func (c *BaseContainer) Update() error {
