@@ -19,6 +19,11 @@ type WindowColors struct {
 	Header     color.Color
 	HeaderText color.Color
 	Border     color.Color
+	// Close button colors (optional, will be derived from header color if nil)
+	CloseButton  color.Color
+	CloseHovered color.Color
+	ClosePressed color.Color
+	CloseCross   color.Color
 }
 
 // DefaultWindowColors returns a default color scheme for windows
@@ -28,28 +33,31 @@ func DefaultWindowColors() WindowColors {
 		Header:     color.RGBA{200, 200, 200, 255},
 		HeaderText: color.Black,
 		Border:     color.RGBA{0, 0, 0, 255},
+		// Close button colors will be derived from header color
 	}
 }
 
 type Window struct {
 	*BaseFocusable
 	*LayoutContainer
-	manager       *WindowManager
-	header        *LayoutContainer
-	content       *LayoutContainer
-	title         string
-	titleLabel    *Label
-	state         WindowState
-	isDragging    bool
-	dragStartX    float64
-	dragStartY    float64
-	windowStartX  float64
-	windowStartY  float64
-	headerHeight  float64
-	closeCallback func()
-	colors        WindowColors
-	borderWidth   float64
-	isStatic      bool
+	manager         *WindowManager
+	header          *BaseContainer
+	content         *LayoutContainer
+	title           string
+	titleLabel      *Label
+	closeButton     *Button
+	state           WindowState
+	isDragging      bool
+	dragStartX      float64
+	dragStartY      float64
+	windowStartX    float64
+	windowStartY    float64
+	headerHeight    float64
+	closeCallback   func()
+	colors          WindowColors
+	borderWidth     float64
+	isStatic        bool
+	closeButtonSize Size
 }
 
 type WindowOpt func(w *Window)
@@ -100,6 +108,13 @@ func WithWindowPosition(x, y float64) WindowOpt {
 func WithStatic() WindowOpt {
 	return func(w *Window) {
 		w.isStatic = true
+	}
+}
+
+// WithCloseButtonSize sets the size of the close button
+func WithCloseButtonSize(size Size) WindowOpt {
+	return func(w *Window) {
+		w.closeButtonSize = size
 	}
 }
 
@@ -236,6 +251,17 @@ func (w *Window) registerEventListeners() {
 
 func (w *Window) isOverHeader(x, y float64) bool {
 	absPos := w.GetAbsolutePosition()
+
+	// Get position of close button
+	cbPos := w.closeButton.GetAbsolutePosition()
+	cbSize := w.closeButton.GetSize()
+
+	// Skip dragging if over close button
+	if x >= cbPos.X && x <= cbPos.X+cbSize.Width &&
+		y >= cbPos.Y && y <= cbPos.Y+cbSize.Height {
+		return false
+	}
+
 	return x >= absPos.X &&
 		x <= absPos.X+w.GetSize().Width &&
 		y >= absPos.Y &&
@@ -263,31 +289,96 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 			WithSize(width, height),
 			WithLayout(NewVerticalStackLayout(0, AlignStart)),
 		),
-		manager:      wm,
-		headerHeight: 30,
-		colors:       DefaultWindowColors(),
-		borderWidth:  1,
-		state:        WindowStateNormal,
+		manager:         wm,
+		headerHeight:    30,
+		colors:          DefaultWindowColors(),
+		borderWidth:     1,
+		state:           WindowStateNormal,
+		closeButtonSize: Size{Width: 20, Height: 20},
 	}
 
 	for _, opt := range opts {
 		opt(window)
 	}
 
-	window.header = NewLayoutContainer(
+	// Initialize header with layout that allows absolute positioning of children
+	window.header = NewBaseContainer(
 		WithSize(width, window.headerHeight),
 		WithBackground(window.colors.Header),
-		WithLayout(NewVerticalStackLayout(0, AlignStart)),
 	)
 
+	// Create title label centered in header
 	window.titleLabel = NewLabel(
 		window.title,
 		WithSize(width, window.headerHeight),
+		WithPosition(Position{X: 0, Y: 0, Relative: true}),
 		WithColor(window.colors.HeaderText),
 		WithJustify(JustifyCenter),
 	)
 	window.header.AddChild(window.titleLabel)
 
+	// Derive close button colors from window colors if not explicitly set
+	closeButtonColor := window.colors.CloseButton
+	closeHoveredColor := window.colors.CloseHovered
+	closePressedColor := window.colors.ClosePressed
+	closeCrossColor := window.colors.CloseCross
+
+	// Set default colors based on header if not specified
+	if closeButtonColor == nil {
+		// close button color should match the header color
+		closeButtonColor = window.colors.Header
+	}
+
+	if closeHoveredColor == nil {
+		// Use a slightly brighter version of the close button color
+		r, g, b, a := closeButtonColor.RGBA()
+		r = uint32(float64(r>>8) * 1.4) // 140% brightness
+		g = uint32(float64(g>>8) * 1.4)
+		b = uint32(float64(b>>8) * 1.4)
+		// Clamp to 255
+		r = min(r, 255)
+		g = min(g, 255)
+		b = min(b, 255)
+		closeHoveredColor = color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a >> 8)}
+	}
+
+	if closePressedColor == nil {
+		// Use a darker version of the close button color
+		r, g, b, a := closeButtonColor.RGBA()
+		r = uint32(float64(r>>8) * 0.6) // 60% brightness
+		g = uint32(float64(g>>8) * 0.6)
+		b = uint32(float64(b>>8) * 0.6)
+		closePressedColor = color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a >> 8)}
+	}
+
+	if closeCrossColor == nil {
+		// cross color should match the header text color
+		closeCrossColor = window.colors.HeaderText
+	}
+
+	// Create close button in top left corner
+	window.closeButton = NewButton(
+		WithSize(window.closeButtonSize.Width, window.closeButtonSize.Height),
+		WithPosition(Position{
+			X:        5,                                                         // 5px padding from left edge
+			Y:        (window.headerHeight - window.closeButtonSize.Height) / 2, // Centered vertically
+			Relative: true,
+		}),
+		WithLabelText("X"), // Unicode multiplication sign as "X"
+		WithButtonColors(ButtonColors{
+			Default:     closeButtonColor,
+			Hovered:     closeHoveredColor,
+			Pressed:     closePressedColor,
+			FocusBorder: color.Transparent, // No focus border for close button
+		}),
+		WithLabelColor(closeCrossColor),
+		WithClickHandler(func() {
+			window.Hide()
+		}),
+	)
+	window.header.AddChild(window.closeButton)
+
+	// Create content container
 	window.content = NewLayoutContainer(
 		WithSize(width, height-window.headerHeight),
 		WithBackground(window.colors.Background),
