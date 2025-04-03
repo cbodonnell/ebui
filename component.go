@@ -77,6 +77,8 @@ func WithPadding(top, right, bottom, left float64) ComponentOpt {
 
 // BaseComponent provides common functionality for all components
 type BaseComponent struct {
+	*BaseTooltipable
+
 	id         uint64
 	position   Position
 	size       Size
@@ -105,8 +107,9 @@ func WithHidden() ComponentOpt {
 
 func NewBaseComponent(opts ...ComponentOpt) *BaseComponent {
 	b := &BaseComponent{
-		id:         GenerateID(),
-		background: color.Transparent,
+		BaseTooltipable: NewBaseTooltipable(),
+		id:              GenerateID(),
+		background:      color.Transparent,
 	}
 	for _, opt := range opts {
 		opt(b)
