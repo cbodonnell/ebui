@@ -1,6 +1,9 @@
 package ebui
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"fmt"
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 type EventType string
 
@@ -49,10 +52,14 @@ type EventBoundary interface {
 	IsWithinBounds(x, y float64) bool
 }
 
+// HandlerID is a unique identifier for event handlers
+type HandlerID string
+
 // Interactive is an interface that can receive input events
 type Interactive interface {
 	HandleEvent(event *Event)
-	AddEventListener(eventType EventType, handler EventHandler)
+	AddEventListener(eventType EventType, handler EventHandler) HandlerID
+	RemoveEventListener(eventType EventType, handlerID HandlerID)
 }
 
 // InteractiveComponent is an interface that combines the Component and Interactive interfaces
@@ -76,32 +83,54 @@ func (bi *BaseInteractive) HandleEvent(event *Event) {
 	bi.eventDispatcher.DispatchEvent(event)
 }
 
-func (bi *BaseInteractive) AddEventListener(eventType EventType, handler EventHandler) {
-	bi.eventDispatcher.AddEventListener(eventType, handler)
+func (bi *BaseInteractive) AddEventListener(eventType EventType, handler EventHandler) HandlerID {
+	return bi.eventDispatcher.AddEventListener(eventType, handler)
+}
+
+func (bi *BaseInteractive) RemoveEventListener(eventType EventType, handlerID HandlerID) {
+	bi.eventDispatcher.RemoveEventListener(eventType, handlerID)
 }
 
 // EventHandler is a function that handles events
 type EventHandler func(event *Event)
 
+// HandlerEntry represents an event handler with its ID
+type HandlerEntry struct {
+	ID      HandlerID
+	Handler EventHandler
+}
+
 // EventDispatcher manages event subscriptions and dispatching
 type EventDispatcher struct {
-	handlers map[EventType][]EventHandler
+	handlers  map[EventType][]HandlerEntry
+	nextID    int
 }
 
 func NewEventDispatcher() *EventDispatcher {
 	return &EventDispatcher{
-		handlers: make(map[EventType][]EventHandler),
+		handlers: make(map[EventType][]HandlerEntry),
+		nextID:   1,
 	}
 }
 
-func (ed *EventDispatcher) AddEventListener(eventType EventType, handler EventHandler) {
-	ed.handlers[eventType] = append(ed.handlers[eventType], handler)
+func (ed *EventDispatcher) AddEventListener(eventType EventType, handler EventHandler) HandlerID {
+	id := HandlerID(fmt.Sprintf("handler_%d", ed.nextID))
+	ed.nextID++
+	
+	entry := HandlerEntry{
+		ID:      id,
+		Handler: handler,
+	}
+	
+	ed.handlers[eventType] = append(ed.handlers[eventType], entry)
+	return id
 }
 
-func (ed *EventDispatcher) RemoveEventListener(eventType EventType, handler EventHandler) {
+func (ed *EventDispatcher) RemoveEventListener(eventType EventType, handlerID HandlerID) {
 	handlers := ed.handlers[eventType]
-	for i, h := range handlers {
-		if &h == &handler {
+	
+	for i, entry := range handlers {
+		if entry.ID == handlerID {
 			ed.handlers[eventType] = append(handlers[:i], handlers[i+1:]...)
 			break
 		}
@@ -109,7 +138,7 @@ func (ed *EventDispatcher) RemoveEventListener(eventType EventType, handler Even
 }
 
 func (ed *EventDispatcher) DispatchEvent(event *Event) {
-	for _, handler := range ed.handlers[event.Type] {
-		handler(event)
+	for _, entry := range ed.handlers[event.Type] {
+		entry.Handler(event)
 	}
 }
