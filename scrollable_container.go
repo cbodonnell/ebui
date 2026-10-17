@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type Scrollable interface {
@@ -46,7 +47,6 @@ type ScrollableContainer struct {
 	dragStartY        float64
 	dragStartOffset   float64
 	scrollBarWidth    float64
-	isFocused         bool
 	isScrollBarHidden bool
 }
 
@@ -110,12 +110,21 @@ func (sc *ScrollableContainer) registerEventListeners() {
 		}
 	})
 
-	sc.AddEventListener(Focus, func(e *Event) {
-		sc.isFocused = true
-	})
-
-	sc.AddEventListener(Blur, func(e *Event) {
-		sc.isFocused = false
+	sc.AddEventListener(Nav, func(e *Event) {
+		if e.Phase != PhaseTarget {
+			return
+		}
+		scrollOffset := sc.GetScrollOffset()
+		switch e.Nav {
+		case NavUp:
+			scrollOffset.Y -= 20
+		case NavDown:
+			scrollOffset.Y += 20
+		default:
+			return
+		}
+		sc.SetScrollOffset(scrollOffset)
+		e.Handled = true
 	})
 }
 
@@ -156,44 +165,42 @@ func (sc *ScrollableContainer) Update() error {
 }
 
 func (sc *ScrollableContainer) handleInput() {
-	if !sc.isFocused {
+	if !sc.IsFocused() {
 		return
 	}
 
-	scrollAmount := float64(20)
-	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
-	if shiftPressed {
-		scrollAmount = 100
-	}
-
+	scrollOffset := sc.GetScrollOffset()
 	switch {
-	case ebiten.IsKeyPressed(ebiten.KeyArrowUp):
-		scrollOffset := sc.GetScrollOffset()
-		scrollOffset.Y -= scrollAmount
-		sc.SetScrollOffset(scrollOffset)
-	case ebiten.IsKeyPressed(ebiten.KeyArrowDown):
-		scrollOffset := sc.GetScrollOffset()
-		scrollOffset.Y += scrollAmount
-		sc.SetScrollOffset(scrollOffset)
-	case ebiten.IsKeyPressed(ebiten.KeyPageUp):
-		scrollOffset := sc.GetScrollOffset()
+	case inpututil.IsKeyJustPressed(ebiten.KeyPageUp):
 		scrollOffset.Y -= sc.GetSize().Height
-		sc.SetScrollOffset(scrollOffset)
-	case ebiten.IsKeyPressed(ebiten.KeyPageDown):
-		scrollOffset := sc.GetScrollOffset()
+	case inpututil.IsKeyJustPressed(ebiten.KeyPageDown):
 		scrollOffset.Y += sc.GetSize().Height
-		sc.SetScrollOffset(scrollOffset)
-	case ebiten.IsKeyPressed(ebiten.KeyHome):
-		scrollOffset := sc.GetScrollOffset()
+	case inpututil.IsKeyJustPressed(ebiten.KeyHome):
 		scrollOffset.Y = 0
-		sc.SetScrollOffset(scrollOffset)
-	case ebiten.IsKeyPressed(ebiten.KeyEnd):
-		scrollOffset := sc.GetScrollOffset()
-		contentSize := sc.layout.GetMinSize(sc)
-		viewportSize := sc.GetSize()
-		scrollOffset.Y = contentSize.Height - viewportSize.Height
-		sc.SetScrollOffset(scrollOffset)
+	case inpututil.IsKeyJustPressed(ebiten.KeyEnd):
+		scrollOffset.Y = sc.layout.GetMinSize(sc).Height - sc.GetSize().Height
+	default:
+		return
 	}
+	sc.SetScrollOffset(scrollOffset)
+}
+
+// ScrollIntoView scrolls a descendant into view.
+func (sc *ScrollableContainer) ScrollIntoView(c Component) {
+	pos := c.GetAbsolutePosition()
+	size := c.GetSize()
+	view := sc.GetAbsolutePosition()
+	viewSize := sc.GetSize()
+	scrollOffset := sc.GetScrollOffset()
+	switch {
+	case pos.Y < view.Y:
+		scrollOffset.Y -= view.Y - pos.Y
+	case pos.Y+size.Height > view.Y+viewSize.Height:
+		scrollOffset.Y += pos.Y + size.Height - (view.Y + viewSize.Height)
+	default:
+		return
+	}
+	sc.SetScrollOffset(scrollOffset)
 }
 
 func (sc *ScrollableContainer) Draw(screen *ebiten.Image) {

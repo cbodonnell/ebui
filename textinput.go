@@ -47,7 +47,6 @@ type TextInput struct {
 	cursorColor      color.Color
 	selectionColor   color.Color
 	focusBorderColor color.Color
-	isFocused        bool
 	lastBlink        time.Time
 	showCursor       bool
 	repeatKey        ebiten.Key
@@ -57,8 +56,6 @@ type TextInput struct {
 	onSubmit         func(string)
 	isPassword       bool
 	maskChar         rune
-	focusable        bool
-	tabIndex         int
 }
 
 type TextInputColors struct {
@@ -123,14 +120,6 @@ func WithPasswordMasking() ComponentOpt {
 	}
 }
 
-func WithTabIndex(index int) ComponentOpt {
-	return func(c Component) {
-		if t, ok := c.(*TextInput); ok {
-			t.tabIndex = index
-		}
-	}
-}
-
 func NewTextInput(opts ...ComponentOpt) *TextInput {
 	colors := DefaultTextInputColors()
 	t := &TextInput{
@@ -152,8 +141,6 @@ func NewTextInput(opts ...ComponentOpt) *TextInput {
 		onSubmit:        func(string) {},
 		isPassword:      false,
 		maskChar:        '*', // Default mask character
-		focusable:       true,
-		tabIndex:        0,
 	}
 
 	for _, opt := range opts {
@@ -176,7 +163,7 @@ func (t *TextInput) registerEventListeners() {
 	})
 
 	t.AddEventListener(MouseUp, func(e *Event) {
-		if t.isFocused {
+		if t.IsFocused() {
 			clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
 			endPos := t.getCharIndexAtX(clickX)
 
@@ -188,7 +175,7 @@ func (t *TextInput) registerEventListeners() {
 	})
 
 	t.AddEventListener(Drag, func(e *Event) {
-		if t.isFocused {
+		if t.IsFocused() {
 			clickX := e.MouseX - t.GetAbsolutePosition().X + t.scrollOffset
 			t.selectionEnd = t.getCharIndexAtX(clickX)
 			t.cursorPos = t.selectionEnd
@@ -197,16 +184,26 @@ func (t *TextInput) registerEventListeners() {
 	})
 
 	t.AddEventListener(Focus, func(e *Event) {
-		t.Focus()
+		t.showFocus()
 	})
 
 	t.AddEventListener(Blur, func(e *Event) {
-		t.Blur()
+		t.hideFocus()
+	})
+
+	t.AddEventListener(Nav, func(e *Event) {
+		if e.Phase != PhaseTarget {
+			return
+		}
+		switch e.Nav {
+		case NavLeft, NavRight, NavActivate:
+			e.Handled = true
+		}
 	})
 }
 
 func (t *TextInput) Update() error {
-	if t.isFocused {
+	if t.IsFocused() {
 		t.handleKeyboardInput()
 		if time.Since(t.lastBlink) > 530*time.Millisecond {
 			t.showCursor = !t.showCursor
@@ -376,7 +373,7 @@ func (t *TextInput) Draw(screen *ebiten.Image) {
 	size := t.GetSize()
 	padding := t.GetPadding()
 
-	if t.isFocused {
+	if t.IsFocused() {
 		// Draw the focus border 1px
 		focusBorder := GetCache().BorderImageWithColor(int(size.Width+2), int(size.Height+2), t.focusBorderColor)
 		op := &ebiten.DrawImageOptions{}
@@ -428,7 +425,7 @@ func (t *TextInput) Draw(screen *ebiten.Image) {
 	}
 
 	// Draw cursor on the main screen (not clipped)
-	if t.isFocused && t.showCursor {
+	if t.IsFocused() && t.showCursor {
 		t.drawCursor(screen)
 	}
 
@@ -679,20 +676,29 @@ func (t *TextInput) GetText() string {
 }
 
 func (t *TextInput) Focus() {
-	t.isFocused = true
+	t.setFocusState(true, true)
+	t.RequestFocus()
+	t.showFocus()
+}
+
+func (t *TextInput) Blur() {
+	t.setFocusState(false, false)
+	t.hideFocus()
+}
+
+func (t *TextInput) CapturesKeys() bool {
+	return true
+}
+
+func (t *TextInput) showFocus() {
 	t.showCursor = true
 	t.lastBlink = time.Now()
 	t.ensureCursorVisible()
 }
 
-func (t *TextInput) Blur() {
-	t.isFocused = false
+func (t *TextInput) hideFocus() {
 	t.showCursor = false
 	t.ClearSelection()
-}
-
-func (t *TextInput) IsFocused() bool {
-	return t.isFocused
 }
 
 func (t *TextInput) SetFont(font font.Face) {

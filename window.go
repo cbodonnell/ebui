@@ -58,6 +58,8 @@ type Window struct {
 	borderWidth     float64
 	isStatic        bool
 	closeButtonSize Size
+	modal           bool
+	onCancel        func()
 }
 
 type WindowOpt func(w *Window)
@@ -116,6 +118,32 @@ func WithCloseButtonSize(size Size) WindowOpt {
 	return func(w *Window) {
 		w.closeButtonSize = size
 	}
+}
+
+// WithModal keeps the focus inside the window while it's open
+func WithModal() WindowOpt {
+	return func(w *Window) {
+		w.modal = true
+	}
+}
+
+// WithCancelHandler replaces hiding the window on NavCancel
+func WithCancelHandler(handler func()) WindowOpt {
+	return func(w *Window) {
+		w.onCancel = handler
+	}
+}
+
+func (w *Window) IsFocusScope() bool {
+	return true
+}
+
+func (w *Window) IsModal() bool {
+	return w.modal
+}
+
+func (w *Window) Raise() {
+	w.manager.SetActiveWindow(w)
 }
 
 // Show makes the window visible
@@ -204,6 +232,18 @@ func (w *Window) clampToScreen() {
 }
 
 func (w *Window) registerEventListeners() {
+	w.AddEventListener(Nav, func(e *Event) {
+		if e.Nav != NavCancel {
+			return
+		}
+		if w.onCancel != nil {
+			w.onCancel()
+		} else {
+			w.Hide()
+		}
+		e.Handled = true
+	})
+
 	w.AddEventListener(DragStart, func(e *Event) {
 		// Always activate window on any mouse down within the window
 		w.manager.SetActiveWindow(w)
@@ -376,6 +416,7 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 			window.Hide()
 		}),
 	)
+	window.closeButton.SetFocusable(false)
 	window.header.AddChild(window.closeButton)
 
 	// Create content container

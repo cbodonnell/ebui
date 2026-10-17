@@ -15,8 +15,7 @@ type InputManager struct {
 	lastUpdateTime  int64
 	buttonStates    map[ebiten.MouseButton]bool
 	focusManager    *FocusManager
-	tabRepeatStart  time.Time
-	tabRepeatLast   time.Time
+	navInput        NavInput
 }
 
 type InputManagerOpt func(im *InputManager)
@@ -33,6 +32,7 @@ func NewInputManager(opts ...InputManagerOpt) *InputManager {
 		lastUpdateTime: time.Now().UnixNano(),
 		buttonStates:   make(map[ebiten.MouseButton]bool),
 		focusManager:   NewFocusManager(),
+		navInput:       KeyboardNavInput(),
 	}
 
 	for _, opt := range opts {
@@ -138,8 +138,17 @@ func (im *InputManager) dispatchEvent(event *Event) bool {
 // It handles mouse button events, mouse movement, wheel events, and drag events.
 // The root component is used as the starting point for event propagation.
 func (im *InputManager) Update(root Component) {
+	im.focusManager.RefreshFocusableComponents(root)
 	im.handleMouseInput(root)
-	im.handleKeyboardInput(root)
+	if im.navInput != nil {
+		for _, action := range im.navInput() {
+			im.focusManager.Navigate(root, action)
+		}
+	}
+}
+
+func (im *InputManager) Navigate(root Component, action NavAction) bool {
+	return im.focusManager.Navigate(root, action)
 }
 
 func (im *InputManager) handleMouseInput(root Component) {
@@ -182,11 +191,7 @@ func (im *InputManager) handleMouseInput(root Component) {
 
 				// Handle focus change on left click only if focus management is enabled
 				if btn == ebiten.MouseButtonLeft && im.focusManager.IsEnabled() {
-					if focusable, ok := target.(FocusableComponent); ok {
-						im.focusManager.SetFocus(focusable)
-					} else {
-						im.focusManager.SetFocus(nil)
-					}
+					im.focusManager.focusFromPointer(target)
 				}
 			} else {
 				evt.Type = MouseUp
@@ -287,54 +292,6 @@ func (im *InputManager) handleMouseInput(root Component) {
 	im.lastMouseX = fx
 	im.lastMouseY = fy
 	im.lastUpdateTime = currentTime
-}
-
-func (im *InputManager) handleKeyboardInput(root Component) {
-	// Skip keyboard input handling if focus management is disabled
-	if !im.focusManager.IsEnabled() {
-		return
-	}
-
-	escPressed := ebiten.IsKeyPressed(ebiten.KeyEscape)
-	if escPressed {
-		im.focusManager.SetFocus(nil)
-	}
-
-	// Handle Tab key for focus navigation
-	tabPressed := ebiten.IsKeyPressed(ebiten.KeyTab)
-	shiftPressed := ebiten.IsKeyPressed(ebiten.KeyShift)
-
-	if !tabPressed {
-		im.tabRepeatStart = time.Time{}
-		im.tabRepeatLast = time.Time{}
-		return
-	}
-
-	now := time.Now()
-	initialDelay := 500 * time.Millisecond
-	repeatDelay := 50 * time.Millisecond
-
-	shouldRepeat := time.Since(im.tabRepeatStart) >= initialDelay &&
-		time.Since(im.tabRepeatLast) >= repeatDelay
-
-	if !shouldRepeat {
-		return
-	}
-
-	// Refresh focusable components
-	im.focusManager.RefreshFocusableComponents(root)
-
-	if im.focusManager.GetCurrentFocus() == nil && len(im.focusManager.focusableComponents) > 0 {
-		// Focus first component if nothing focused
-		im.focusManager.SetFocus(im.focusManager.focusableComponents[0])
-	} else {
-		im.focusManager.HandleTab(shiftPressed)
-	}
-
-	if im.tabRepeatStart.IsZero() {
-		im.tabRepeatStart = now
-	}
-	im.tabRepeatLast = now
 }
 
 // DisableFocusManagement disables the focus manager

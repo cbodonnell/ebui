@@ -4,7 +4,6 @@ import (
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 var _ FocusableComponent = &ButtonContainer{}
@@ -15,7 +14,6 @@ type ButtonContainer struct {
 	colors    ButtonColors
 	isHovered bool
 	isPressed bool
-	isFocused bool
 	onClick   func()
 }
 
@@ -91,12 +89,11 @@ func (b *ButtonContainer) registerEventListeners() {
 		b.isPressed = false
 	})
 
-	b.AddEventListener(Focus, func(e *Event) {
-		b.isFocused = true
-	})
-
-	b.AddEventListener(Blur, func(e *Event) {
-		b.isFocused = false
+	b.AddEventListener(Nav, func(e *Event) {
+		if e.Phase == PhaseTarget && e.Nav == NavActivate {
+			b.onClick()
+			e.Handled = true
+		}
 	})
 }
 
@@ -105,21 +102,8 @@ func (b *ButtonContainer) SetClickHandler(handler func()) {
 }
 
 func (b *ButtonContainer) Update() error {
-	b.handleInput()
 	b.updateAppearance()
 	return b.BaseContainer.Update()
-}
-
-func (b *ButtonContainer) handleInput() {
-	if !b.isFocused {
-		return
-	}
-
-	enterPressed := inpututil.IsKeyJustPressed(ebiten.KeyEnter)
-	spacePressed := inpututil.IsKeyJustPressed(ebiten.KeySpace)
-	if enterPressed || spacePressed {
-		b.onClick()
-	}
 }
 
 func (b *ButtonContainer) updateAppearance() {
@@ -140,14 +124,21 @@ func (b *ButtonContainer) Draw(screen *ebiten.Image) {
 		return
 	}
 
-	if b.isFocused {
-		// Draw the focus border 1px
-		pos := b.GetAbsolutePosition()
-		size := b.GetSize()
-		focusBorder := GetCache().BorderImageWithColor(int(size.Width+2), int(size.Height+2), b.colors.FocusBorder)
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(pos.X-1, pos.Y-1)
-		screen.DrawImage(focusBorder, op)
+	if b.IsFocusVisible() {
+		DrawFocusRing(screen, b, b.colors.FocusBorder)
 	}
 	b.BaseContainer.Draw(screen)
+}
+
+// DrawFocusRing draws a 1px border around a component.
+func DrawFocusRing(screen *ebiten.Image, c Component, col color.Color) {
+	if col == nil {
+		return
+	}
+	pos := c.GetAbsolutePosition()
+	size := c.GetSize()
+	ring := GetCache().BorderImageWithColor(int(size.Width+2), int(size.Height+2), col)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(pos.X-1, pos.Y-1)
+	screen.DrawImage(ring, op)
 }

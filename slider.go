@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 	"math"
-	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -48,19 +47,11 @@ type Slider struct {
 	trackHeight float64
 	isDragging  bool
 	isHovered   bool
-	isFocused   bool
 	colors      SliderColors
 	onChange    func(value float64)
 	valueLabel  *Label
 	showValue   bool
 	valueSuffix string
-	focusable   bool
-	tabIndex    int
-
-	// Key repeat tracking for continuous sliding
-	repeatKey   ebiten.Key
-	repeatStart time.Time
-	lastRepeat  time.Time
 }
 
 // SliderOpt is a function that configures a Slider
@@ -177,9 +168,6 @@ func NewSlider(opts ...ComponentOpt) *Slider {
 		onChange:      func(value float64) {},
 		showValue:     false,
 		valueSuffix:   "",
-		focusable:     true,
-		tabIndex:      0,
-		repeatKey:     -1,
 	}
 
 	// Value label (optional, shown if WithShowValue is used)
@@ -230,12 +218,18 @@ func (s *Slider) registerEventListeners() {
 		}
 	})
 
-	s.AddEventListener(Focus, func(e *Event) {
-		s.isFocused = true
-	})
-
-	s.AddEventListener(Blur, func(e *Event) {
-		s.isFocused = false
+	s.AddEventListener(Nav, func(e *Event) {
+		if e.Phase != PhaseTarget {
+			return
+		}
+		switch e.Nav {
+		case NavLeft:
+			s.decrementValue()
+			e.Handled = true
+		case NavRight:
+			s.incrementValue()
+			e.Handled = true
+		}
 	})
 }
 
@@ -245,16 +239,11 @@ func (s *Slider) Update() error {
 }
 
 func (s *Slider) handleInput() {
-	if !s.isFocused {
+	if !s.IsFocused() {
 		return
 	}
 
-	// Handle keyboard navigation
-	if inpututil.IsKeyJustPressed(ebiten.KeyLeft) || inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) {
-		s.decrementValue()
-	} else if inpututil.IsKeyJustPressed(ebiten.KeyRight) || inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) {
-		s.incrementValue()
-	} else if inpututil.IsKeyJustPressed(ebiten.KeyHome) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyHome) {
 		s.SetValue(s.min)
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyEnd) {
 		s.SetValue(s.max)
@@ -263,13 +252,10 @@ func (s *Slider) handleInput() {
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyPageUp) {
 		s.SetValue(s.value + (s.max-s.min)/10)
 	}
-
-	// Handle key repeats for continuous sliding when holding down keys
-	s.handleKeyRepeat()
 }
 
 func (s *Slider) Draw(screen *ebiten.Image) {
-	if s.isFocused {
+	if s.IsFocusVisible() {
 		// Draw the focus border 1px
 		pos := s.GetAbsolutePosition()
 		size := s.GetSize()
@@ -465,61 +451,6 @@ func (s *Slider) GetValue() float64 {
 // SetColors sets the color scheme for the slider
 func (s *Slider) SetColors(colors SliderColors) {
 	s.colors = colors
-}
-
-// handleKeyRepeat implements continuous sliding when keys are held down
-func (s *Slider) handleKeyRepeat() {
-	// Arrow keys for slider movement
-	leftKey := ebiten.KeyLeft
-	rightKey := ebiten.KeyRight
-
-	// Check if either key is pressed
-	leftPressed := ebiten.IsKeyPressed(leftKey)
-	rightPressed := ebiten.IsKeyPressed(rightKey)
-
-	// Handle key release
-	if s.repeatKey != -1 &&
-		!ebiten.IsKeyPressed(s.repeatKey) {
-		s.repeatKey = -1
-		return
-	}
-
-	// Handle new key press
-	if s.repeatKey == -1 {
-		if leftPressed {
-			s.repeatKey = leftKey
-			s.repeatStart = time.Now()
-			s.lastRepeat = time.Now()
-			// Initial input is handled by IsKeyJustPressed in handleInput
-		} else if rightPressed {
-			s.repeatKey = rightKey
-			s.repeatStart = time.Now()
-			s.lastRepeat = time.Now()
-			// Initial input is handled by IsKeyJustPressed in handleInput
-		}
-		return
-	}
-
-	// Handle key repeat timing
-	now := time.Now()
-	initialDelay := 300 * time.Millisecond // Longer initial delay
-	repeatDelay := 50 * time.Millisecond   // Fast repeat rate after initial delay
-
-	shouldRepeat := time.Since(s.repeatStart) >= initialDelay &&
-		time.Since(s.lastRepeat) >= repeatDelay
-
-	if !shouldRepeat {
-		return
-	}
-
-	// Handle repeated key input
-	if s.repeatKey == leftKey {
-		s.decrementValue()
-	} else if s.repeatKey == rightKey {
-		s.incrementValue()
-	}
-
-	s.lastRepeat = now
 }
 
 // SetOnChange sets the handler for value changes

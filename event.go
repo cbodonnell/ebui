@@ -21,6 +21,7 @@ const (
 	Drop       EventType = "drop"
 	Focus      EventType = "focus"
 	Blur       EventType = "blur"
+	Nav        EventType = "nav"
 )
 
 type EventPhase int
@@ -45,6 +46,8 @@ type Event struct {
 	Bubbles                  bool
 	Phase                    EventPhase
 	Path                     []InteractiveComponent
+	Nav                      NavAction
+	Handled                  bool
 }
 
 // EventBoundary represents a component that controls event propagation
@@ -102,8 +105,8 @@ type HandlerEntry struct {
 
 // EventDispatcher manages event subscriptions and dispatching
 type EventDispatcher struct {
-	handlers  map[EventType][]HandlerEntry
-	nextID    int
+	handlers map[EventType][]HandlerEntry
+	nextID   int
 }
 
 func NewEventDispatcher() *EventDispatcher {
@@ -116,19 +119,19 @@ func NewEventDispatcher() *EventDispatcher {
 func (ed *EventDispatcher) AddEventListener(eventType EventType, handler EventHandler) HandlerID {
 	id := HandlerID(fmt.Sprintf("handler_%d", ed.nextID))
 	ed.nextID++
-	
+
 	entry := HandlerEntry{
 		ID:      id,
 		Handler: handler,
 	}
-	
+
 	ed.handlers[eventType] = append(ed.handlers[eventType], entry)
 	return id
 }
 
 func (ed *EventDispatcher) RemoveEventListener(eventType EventType, handlerID HandlerID) {
 	handlers := ed.handlers[eventType]
-	
+
 	for i, entry := range handlers {
 		if entry.ID == handlerID {
 			ed.handlers[eventType] = append(handlers[:i], handlers[i+1:]...)

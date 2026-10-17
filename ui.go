@@ -19,6 +19,13 @@ func WithInputManager(im *InputManager) ManagerOpt {
 	}
 }
 
+// WithNavInput sets the navigation source; nil disables it so the host can call Navigate.
+func WithNavInput(navInput NavInput) ManagerOpt {
+	return func(m *Manager) {
+		m.input.navInput = navInput
+	}
+}
+
 // NewManager creates a new UI Manager with the given root container.
 func NewManager(root Container, opts ...ManagerOpt) *Manager {
 	m := &Manager{
@@ -56,4 +63,32 @@ func (u *Manager) EnableFocus() {
 // IsFocusEnabled returns whether focus management is enabled.
 func (u *Manager) IsFocusEnabled() bool {
 	return u.input.IsFocusManagementEnabled()
+}
+
+// Navigate applies a navigation action and reports whether it was handled.
+func (u *Manager) Navigate(action NavAction) bool {
+	return u.input.Navigate(u.root, action)
+}
+
+func (u *Manager) Focused() FocusableComponent {
+	return u.input.focusManager.GetCurrentFocus()
+}
+
+func (u *Manager) FocusedScope() Component {
+	if u.Focused() == nil {
+		return nil
+	}
+	return u.input.focusManager.currentScope
+}
+
+func (u *Manager) SetFocus(component FocusableComponent) {
+	u.input.focusManager.SetFocus(component)
+}
+
+// IsCapturingKeys reports whether the focused component takes the keyboard.
+func (u *Manager) IsCapturingKeys() bool {
+	if kc, ok := u.Focused().(KeyCapturer); ok {
+		return kc.CapturesKeys()
+	}
+	return false
 }

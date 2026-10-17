@@ -216,6 +216,10 @@ window := windowManager.CreateWindow(400, 300,
 )
 ```
 
+## Keyboard Navigation
+
+Arrows move focus spatially, Tab cycles windows (or controls in a single scope), Enter activates and Escape closes the focused window. To route keys yourself, pass `WithNavInput(nil)` and call `Manager.Navigate`, which reports whether the UI handled the action.
+
 ## Debugging
 
 EBUI includes a debug mode that visualizes component bounds and layout information. Set the global `Debug` variable to `true` to enable debug mode:
