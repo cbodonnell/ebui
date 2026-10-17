@@ -246,8 +246,6 @@ type TooltipHandlers struct {
 	mouseEnterID HandlerID
 	mouseLeaveID HandlerID
 	mouseMoveID  HandlerID
-	focusID      HandlerID
-	blurID       HandlerID
 }
 
 // TooltipManager handles the display and positioning of tooltips
@@ -313,15 +311,6 @@ func (tm *TooltipManager) HandleTargetHover(component Component, mouseX, mouseY 
 
 	// Show tooltip immediately
 	tm.ShowTooltip(tooltip)
-}
-
-// HandleTargetFocus shows a keyboard-focused component's tooltip at its top right
-func (tm *TooltipManager) HandleTargetFocus(component Component) {
-	if f, ok := component.(FocusableComponent); ok && !f.IsFocusVisible() {
-		return
-	}
-	pos := component.GetAbsolutePosition()
-	tm.HandleTargetHover(component, pos.X+component.GetSize().Width, pos.Y)
 }
 
 // HandleTargetLeave handles when the mouse leaves a component with a tooltip
@@ -583,21 +572,11 @@ func (tm *TooltipManager) RegisterTooltip(component TooltipableComponent, toolti
 		tm.HandleMouseMove(e.MouseX, e.MouseY)
 	})
 
-	focusID := component.AddEventListener(Focus, func(e *Event) {
-		tm.HandleTargetFocus(component)
-	})
-
-	blurID := component.AddEventListener(Blur, func(e *Event) {
-		tm.HandleTargetLeave(component)
-	})
-
 	// Store the handler IDs for later removal
 	tm.registeredHandlers[component] = &TooltipHandlers{
 		mouseEnterID: mouseEnterID,
 		mouseLeaveID: mouseLeaveID,
 		mouseMoveID:  mouseMoveID,
-		focusID:      focusID,
-		blurID:       blurID,
 	}
 }
 
@@ -614,8 +593,6 @@ func (tm *TooltipManager) UnregisterTooltip(component TooltipableComponent) {
 	component.RemoveEventListener(MouseEnter, handlers.mouseEnterID)
 	component.RemoveEventListener(MouseLeave, handlers.mouseLeaveID)
 	component.RemoveEventListener(MouseMove, handlers.mouseMoveID)
-	component.RemoveEventListener(Focus, handlers.focusID)
-	component.RemoveEventListener(Blur, handlers.blurID)
 
 	// Clear the tooltip from the component
 	component.ClearTooltip()
