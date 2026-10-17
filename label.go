@@ -7,7 +7,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
 )
 
 var _ Component = &Label{}
@@ -75,10 +74,10 @@ func NewLabel(text string, opts ...ComponentOpt) *Label {
 	b := &Label{
 		BaseComponent: NewBaseComponent(opts...),
 		text:          text,
-		color:         color.Black,        // Default text color
-		font:          basicfont.Face7x13, // Default font
-		justify:       JustifyCenter,      // Default text justification
-		wrap:          false,              // Default to no wrapping
+		color:         color.Black, // Default text color
+		font:          DefaultFont,
+		justify:       JustifyCenter, // Default text justification
+		wrap:          false,         // Default to no wrapping
 	}
 
 	for _, opt := range opts {

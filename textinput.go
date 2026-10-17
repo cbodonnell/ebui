@@ -11,7 +11,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.design/x/clipboard"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
 )
 
 var _ FocusableComponent = &TextInput{}
@@ -131,7 +130,7 @@ func NewTextInput(opts ...ComponentOpt) *TextInput {
 		selectionEnd:    -1,
 		scrollOffset:    0,
 		repeatKey:       -1,
-		font:            basicfont.Face7x13,
+		font:            DefaultFont,
 		textColor:       colors.Text,
 		backgroundColor: colors.Background,
 		cursorColor:     colors.Cursor,
