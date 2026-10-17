@@ -87,6 +87,7 @@ type BaseComponent struct {
 	parent     Container
 	disabled   bool
 	hidden     bool
+	role       string
 }
 
 func WithBackground(color color.Color) ComponentOpt {
@@ -176,6 +177,14 @@ func (b *BaseComponent) GetBackground() color.Color {
 
 func (b *BaseComponent) SetBackground(color color.Color) {
 	b.background = color
+}
+
+func (b *BaseComponent) SetRole(role string) {
+	b.role = role
+}
+
+func (b *BaseComponent) GetRole() string {
+	return b.role
 }
 
 func (b *BaseComponent) Disable() {

@@ -124,21 +124,47 @@ func (b *ButtonContainer) Draw(screen *ebiten.Image) {
 		return
 	}
 
-	if b.IsFocusVisible() {
-		DrawFocusRing(screen, b, b.colors.FocusBorder)
+	b.drawFace(screen)
+	for _, child := range b.children {
+		child.Draw(screen)
 	}
-	b.BaseContainer.Draw(screen)
 }
 
-// DrawFocusRing draws a 1px border around a component.
+// drawFace draws the button's focus ring and face.
+func (b *ButtonContainer) drawFace(screen *ebiten.Image) {
+	if b.IsFocusVisible() {
+		paint(screen, Paint{Part: PartFocusRing, Role: b.GetRole(), State: StateFocused, Rect: componentRect(b), Border: b.colors.FocusBorder})
+	}
+	paint(screen, Paint{Part: PartButton, Role: b.GetRole(), State: b.state(), Rect: componentRect(b), Fill: b.GetBackground()})
+	b.drawDebug(screen)
+}
+
+// state is the button's interaction state, for the painter.
+func (b *ButtonContainer) state() State {
+	var s State
+	if b.isHovered {
+		s |= StateHovered
+	}
+	if b.isPressed {
+		s |= StatePressed
+	}
+	if b.IsFocusVisible() {
+		s |= StateFocused
+	}
+	if b.IsDisabled() {
+		s |= StateDisabled
+	}
+	return s
+}
+
+// DrawFocusRing draws the focus ring around a component.
 func DrawFocusRing(screen *ebiten.Image, c Component, col color.Color) {
 	if col == nil {
 		return
 	}
-	pos := c.GetAbsolutePosition()
-	size := c.GetSize()
-	ring := GetCache().BorderImageWithColor(int(size.Width+2), int(size.Height+2), col)
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(pos.X-1, pos.Y-1)
-	screen.DrawImage(ring, op)
+	role := ""
+	if r, ok := c.(interface{ GetRole() string }); ok {
+		role = r.GetRole()
+	}
+	paint(screen, Paint{Part: PartFocusRing, Role: role, State: StateFocused, Rect: componentRect(c), Border: col})
 }

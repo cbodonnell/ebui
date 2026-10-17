@@ -372,21 +372,18 @@ func (t *TextInput) Draw(screen *ebiten.Image) {
 	size := t.GetSize()
 	padding := t.GetPadding()
 
+	var state State
 	if t.IsFocused() {
-		// Draw the focus border 1px
-		focusBorder := GetCache().BorderImageWithColor(int(size.Width+2), int(size.Height+2), t.focusBorderColor)
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(pos.X-1, pos.Y-1)
-		screen.DrawImage(focusBorder, op)
+		state |= StateFocused
+		paint(screen, Paint{Part: PartFocusRing, Role: t.GetRole(), State: state, Rect: componentRect(t), Border: t.focusBorderColor})
+	}
+	if t.IsDisabled() {
+		state |= StateDisabled
 	}
 
 	// Draw background first on the main screen
-	bgWidth := int(size.Width - padding.Left - padding.Right)
-	bgHeight := int(size.Height - padding.Top - padding.Bottom)
-	bg := GetCache().ImageWithColor(bgWidth, bgHeight, t.backgroundColor)
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(pos.X+padding.Left, pos.Y+padding.Top)
-	screen.DrawImage(bg, op)
+	well := rectAt(pos.X+padding.Left, pos.Y+padding.Top, size.Width-padding.Left-padding.Right, size.Height-padding.Top-padding.Bottom)
+	paint(screen, Paint{Part: PartTextInput, Role: t.GetRole(), State: state, Rect: well, Fill: t.backgroundColor})
 
 	// Create clip bounds for text content
 	clipBounds := image.Rect(
@@ -516,14 +513,8 @@ func (t *TextInput) drawCursor(screen *ebiten.Image) {
 	cursorHeight := int(size.Height - padding.Top - padding.Bottom)
 	cursorX := t.getXPositionForIndex(t.cursorPos) - t.scrollOffset
 
-	cursor := GetCache().ImageWithColor(1, cursorHeight, t.cursorColor)
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(
-		pos.X+padding.Left+cursorX,
-		pos.Y+padding.Top,
-	)
-	screen.DrawImage(cursor, op)
+	caret := rectAt(pos.X+padding.Left+cursorX, pos.Y+padding.Top, 1, float64(cursorHeight))
+	paint(screen, Paint{Part: PartCaret, Role: t.GetRole(), State: StateFocused, Rect: caret, Fill: t.cursorColor})
 }
 
 func (t *TextInput) ensureCursorVisible() {

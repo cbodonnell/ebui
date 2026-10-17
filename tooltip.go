@@ -152,9 +152,6 @@ func NewTooltip(opts ...ComponentOpt) *Tooltip {
 		opt(tooltip)
 	}
 
-	// Apply background
-	tooltip.SetBackground(tooltip.backgroundColor)
-
 	return tooltip
 }
 
@@ -164,22 +161,7 @@ func (t *Tooltip) Draw(screen *ebiten.Image) {
 		return
 	}
 
-	pos := t.GetAbsolutePosition()
-	size := t.GetSize()
-
-	// Draw border if border width > 0
-	if t.borderWidth > 0 {
-		border := GetCache().BorderImageWithColor(
-			int(size.Width),
-			int(size.Height),
-			t.borderColor,
-		)
-		borderOp := &ebiten.DrawImageOptions{}
-		borderOp.GeoM.Translate(pos.X, pos.Y)
-		screen.DrawImage(border, borderOp)
-	}
-
-	// Draw the component
+	paint(screen, Paint{Part: PartTooltip, Role: t.GetRole(), Rect: componentRect(t), Fill: t.backgroundColor, Border: t.borderColor})
 	t.LayoutContainer.Draw(screen)
 }
 

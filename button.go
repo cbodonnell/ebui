@@ -2,6 +2,8 @@ package ebui
 
 import (
 	"image/color"
+
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 var _ FocusableComponent = &Button{}
@@ -53,4 +55,26 @@ func (b *Button) GetLabel() string {
 
 func (b *Button) SetLabel(text string) {
 	b.label.SetText(text)
+}
+
+// Draw draws the button's face, then its label, unless the painter draws the label itself.
+func (b *Button) Draw(screen *ebiten.Image) {
+	if b.IsHidden() {
+		return
+	}
+	b.drawFace(screen)
+	drawn := paintCustom(screen, Paint{
+		Part:  PartButtonLabel,
+		Role:  b.GetRole(),
+		State: b.state(),
+		Rect:  componentRect(b),
+		Fill:  b.label.GetColor(),
+		Text:  b.label.GetText(),
+	})
+	for _, child := range b.children {
+		if drawn && child == b.label {
+			continue
+		}
+		child.Draw(screen)
+	}
 }

@@ -283,31 +283,27 @@ func (sc *ScrollableContainer) drawScrollBar(screen *ebiten.Image) {
 	pos := sc.GetAbsolutePosition()
 	size := sc.GetSize()
 
-	// Draw track
 	trackWidth := int(sc.scrollBarWidth)
 	trackHeight := int(size.Height)
+	trackX := pos.X + size.Width - sc.scrollBarWidth
+	var state State
+	if sc.isDraggingThumb {
+		state |= StatePressed
+	}
+	paint(screen, Paint{Part: PartScrollTrack, Role: sc.GetRole(), State: state, Rect: rectAt(trackX, pos.Y, float64(trackWidth), float64(trackHeight)), Fill: sc.colors.Track})
 
-	trackImg := GetCache().ImageWithColor(trackWidth, trackHeight, sc.colors.Track)
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y)
-	screen.DrawImage(trackImg, op)
-
-	// Draw thumb
 	thumbHeight := int(sc.getScrollThumbHeight())
 
 	// Calculate max position where thumb would touch bottom exactly
 	maxThumbY := trackHeight - thumbHeight
 
-	// Calculate normal position using ratio
 	contentSize := sc.layout.GetMinSize(sc)
 	viewportSize := sc.GetSize()
 	maxScroll := math.Max(0, contentSize.Height-viewportSize.Height)
 
 	// Calculate thumb position, ensuring it doesn't exceed the track
 	var thumbY int
-	if maxScroll <= 0 {
-		thumbY = 0
-	} else {
+	if maxScroll > 0 {
 		ratio := float64(sc.scrollOffset.Y) / maxScroll
 		// Use integer math to avoid fractional positioning
 		thumbY = int(math.Min(float64(maxThumbY), float64(maxThumbY)*ratio))
@@ -317,11 +313,8 @@ func (sc *ScrollableContainer) drawScrollBar(screen *ebiten.Image) {
 	if sc.isDraggingThumb {
 		thumbColor = sc.colors.ThumbDrag
 	}
-
-	thumbImg := GetCache().ImageWithColor(trackWidth, thumbHeight, thumbColor)
-	op = &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(pos.X+size.Width-sc.scrollBarWidth, pos.Y+float64(thumbY))
-	screen.DrawImage(thumbImg, op)
+	thumb := rectAt(trackX, pos.Y+float64(thumbY), float64(trackWidth), float64(thumbHeight))
+	paint(screen, Paint{Part: PartScrollThumb, Role: sc.GetRole(), State: state, Rect: thumb, Fill: thumbColor})
 }
 
 func (sc *ScrollableContainer) clampScrollOffset() {

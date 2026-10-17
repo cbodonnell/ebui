@@ -256,13 +256,7 @@ func (s *Slider) handleInput() {
 
 func (s *Slider) Draw(screen *ebiten.Image) {
 	if s.IsFocusVisible() {
-		// Draw the focus border 1px
-		pos := s.GetAbsolutePosition()
-		size := s.GetSize()
-		focusBorder := GetCache().BorderImageWithColor(int(size.Width+2), int(size.Height+2), s.colors.FocusBorder)
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(pos.X-1, pos.Y-1)
-		screen.DrawImage(focusBorder, op)
+		paint(screen, Paint{Part: PartFocusRing, Role: s.GetRole(), State: StateFocused, Rect: componentRect(s), Border: s.colors.FocusBorder})
 	}
 
 	// Let the container handle drawing of any children (like the value label)
@@ -278,53 +272,53 @@ func (s *Slider) Draw(screen *ebiten.Image) {
 	}
 }
 
+// state is the slider's interaction state, for the painter.
+func (s *Slider) state() State {
+	var st State
+	if s.isHovered {
+		st |= StateHovered
+	}
+	if s.isDragging {
+		st |= StatePressed
+	}
+	if s.IsFocusVisible() {
+		st |= StateFocused
+	}
+	if s.IsDisabled() {
+		st |= StateDisabled
+	}
+	return st
+}
+
 func (s *Slider) drawTrack(screen *ebiten.Image) {
 	pos := s.GetAbsolutePosition()
 	size := s.GetSize()
-
-	// Calculate track position
 	trackY := pos.Y + (size.Height-s.trackHeight)/2
-
-	// Background track
-	trackWidth := s.getTrackWidth()
-	trackImg := GetCache().ImageWithColor(int(trackWidth), int(s.trackHeight), s.colors.Track)
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(s.getTrackX(), trackY)
-	screen.DrawImage(trackImg, op)
+	track := rectAt(s.getTrackX(), trackY, s.getTrackWidth(), s.trackHeight)
+	paint(screen, Paint{Part: PartSliderTrack, Role: s.GetRole(), State: s.state(), Rect: track, Fill: s.colors.Track})
 
 	// Filled track (from left to thumb)
-	filledWidth := s.getThumbPosition() - s.getTrackX()
-	if int(filledWidth) > 0 {
-		filledTrackImg := GetCache().ImageWithColor(int(filledWidth), int(s.trackHeight), s.colors.TrackFilled)
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(s.getTrackX(), trackY)
-		screen.DrawImage(filledTrackImg, op)
+	filled := track
+	filled.Max.X = int(s.getThumbPosition())
+	if filled.Dx() > 0 {
+		paint(screen, Paint{Part: PartSliderFill, Role: s.GetRole(), State: s.state(), Rect: filled, Fill: s.colors.TrackFilled})
 	}
 }
 
 func (s *Slider) drawThumb(screen *ebiten.Image) {
-	// Determine thumb color based on state
-	var thumbColor color.Color
+	thumbColor := s.colors.Thumb
 	if s.isDragging {
 		thumbColor = s.colors.ThumbDragged
 	} else if s.isHovered {
 		thumbColor = s.colors.ThumbHovered
-	} else {
-		thumbColor = s.colors.Thumb
 	}
 
-	// Create thumb image
-	thumbImg := GetCache().ImageWithColor(int(s.thumbWidth), int(s.thumbHeight), thumbColor)
-
-	// Draw thumb
 	pos := s.GetAbsolutePosition()
 	size := s.GetSize()
 	thumbX := s.getThumbPosition() - s.thumbWidth/2
 	thumbY := pos.Y + (size.Height-s.thumbHeight)/2
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(thumbX, thumbY)
-	screen.DrawImage(thumbImg, op)
+	thumb := rectAt(thumbX, thumbY, s.thumbWidth, s.thumbHeight)
+	paint(screen, Paint{Part: PartSliderThumb, Role: s.GetRole(), State: s.state(), Rect: thumb, Fill: thumbColor})
 }
 
 // drawValueLabel draws the value label on the right side of the slider

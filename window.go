@@ -127,6 +127,13 @@ func WithModal() WindowOpt {
 	}
 }
 
+// WithWindowRole names what the window is for, for the painter
+func WithWindowRole(role string) WindowOpt {
+	return func(w *Window) {
+		w.SetRole(role)
+	}
+}
+
 // WithCancelHandler replaces hiding the window on NavCancel
 func WithCancelHandler(handler func()) WindowOpt {
 	return func(w *Window) {
@@ -201,13 +208,14 @@ func (w *Window) Draw(screen *ebiten.Image) {
 		return
 	}
 
-	// Draw the window border 1px
-	pos := w.GetAbsolutePosition()
-	size := w.GetSize()
-	bg := GetCache().ImageWithColor(int(size.Width+2), int(size.Height+2), w.colors.Border)
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(pos.X-1, pos.Y-1)
-	screen.DrawImage(bg, op)
+	paint(screen, Paint{Part: PartWindow, Role: w.GetRole(), Rect: componentRect(w), Fill: w.colors.Background, Border: w.colors.Border})
+	header := componentRect(w.header)
+	paint(screen, Paint{Part: PartWindowHeader, Role: w.GetRole(), Rect: header, Fill: w.colors.Header})
+	if paintCustom(screen, Paint{Part: PartWindowTitle, Role: w.GetRole(), Rect: header, Fill: w.colors.HeaderText, Text: w.title}) {
+		w.titleLabel.Hide()
+	} else {
+		w.titleLabel.Show()
+	}
 
 	w.LayoutContainer.Draw(screen)
 }
@@ -344,7 +352,6 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 	// Initialize header with layout that allows absolute positioning of children
 	window.header = NewBaseContainer(
 		WithSize(width, window.headerHeight),
-		WithBackground(window.colors.Header),
 	)
 
 	// Create title label centered in header
@@ -412,6 +419,7 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 			FocusBorder: color.Transparent, // No focus border for close button
 		}),
 		WithLabelColor(closeCrossColor),
+		WithRole("close"),
 		WithClickHandler(func() {
 			window.Hide()
 		}),
@@ -422,7 +430,6 @@ func (wm *WindowManager) CreateWindow(width, height float64, opts ...WindowOpt) 
 	// Create content container
 	window.content = NewLayoutContainer(
 		WithSize(width, height-window.headerHeight),
-		WithBackground(window.colors.Background),
 		WithLayout(NewVerticalStackLayout(0, AlignStart)),
 	)
 

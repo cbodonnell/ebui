@@ -220,6 +220,24 @@ window := windowManager.CreateWindow(400, 300,
 
 Arrows move focus spatially, Tab cycles windows (or controls in a single scope), Enter activates and Escape closes the focused window. To route keys yourself, pass `WithNavInput(nil)` and call `Manager.Navigate`, which reports whether the UI handled the action.
 
+## Painting
+
+Components draw their chrome (window frames, headers and titles, buttons and their labels, focus rings, tooltips, slider and scroll parts, text input wells and carets) through `DefaultPainter`. Each part arrives as a `Paint`: the `Part`, the component's role (`WithRole`, `WithWindowRole`), its `State` (hovered, pressed, focused, disabled), its rectangle, its flat colors and any text. `Paint` reports whether it drew the part; a part it declines, or every part when `DefaultPainter` is nil, is drawn flat in the color sets above. A painter that draws `PartWindowTitle` or `PartButtonLabel` replaces the component's own label.
+
+```go
+type painter struct{}
+
+func (painter) Paint(dst *ebiten.Image, p ebui.Paint) bool {
+    if p.Part != ebui.PartButton || p.Role != "primary" {
+        return false
+    }
+    // draw a primary button's face in p.Rect for p.State
+    return true
+}
+
+ebui.DefaultPainter = painter{}
+```
+
 ## Debugging
 
 EBUI includes a debug mode that visualizes component bounds and layout information. Set the global `Debug` variable to `true` to enable debug mode:
