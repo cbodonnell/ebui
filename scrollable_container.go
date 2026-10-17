@@ -241,9 +241,12 @@ func (sc *ScrollableContainer) IsWithinBounds(x, y float64) bool {
 
 // Scroll bar related methods
 func (sc *ScrollableContainer) needsScrollBar() bool {
-	if sc.isScrollBarHidden {
-		return false
-	}
+	return !sc.isScrollBarHidden && sc.Overflows()
+}
+
+// Overflows reports whether the content is taller than the container, which is
+// when it scrolls and shows its scroll bar.
+func (sc *ScrollableContainer) Overflows() bool {
 	contentSize := sc.layout.GetMinSize(sc)
 	viewportSize := sc.GetSize()
 	return contentSize.Height > viewportSize.Height
